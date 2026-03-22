@@ -106,7 +106,7 @@ export async function setSetting(key: string, value: string): Promise<void> {
   window.dispatchEvent(new CustomEvent("settings-changed", { detail: { key, value } }));
 }
 
-export async function getFiscalOverrides(an: number): Promise<Record<string, string>> {
+export async function getFiscalOverrides(_an?: number): Promise<Record<string, string>> {
   const db = await getDb();
   const rows = await db.select<{ key: string; value: string }[]>(
     "SELECT key, value FROM settings WHERE key LIKE 'fiscal_%'"
