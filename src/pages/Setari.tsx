@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw } from "lucide-react";
-import { getDb, getSetting, setSetting, isTauri } from "@/lib/db";
+import { getDb, setSetting, isTauri } from "@/lib/db";
 import { FISCAL, FISCAL_DEFAULTS } from "@/lib/fiscal";
 import type { OperatingMode } from "@/types";
 
