@@ -1,0 +1,350 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Backgrounds */
+  --bg-base:    #090a0a;
+  --bg-1:       #0e1010;
+  --bg-2:       #141717;
+  --bg-3:       #1a1e1e;
+  --bg-hover:   #1e2323;
+
+  /* Borders */
+  --border:     #212626;
+  --border-md:  #2a3030;
+  --border-hi:  #333b3b;
+
+  /* Text */
+  --tx-1:       #ede9e4;
+  --tx-2:       #9a9590;
+  --tx-3:       #555e5e;
+  --tx-4:       #2e3535;
+
+  /* Accent — warm amber */
+  --ac:         #d4845a;
+  --ac-dim:     rgba(212,132,90,0.12);
+  --ac-hover:   #c0724a;
+
+  /* Semantic */
+  --green:      #52b788;
+  --green-dim:  rgba(82,183,136,0.1);
+  --red:        #e05c5c;
+  --red-dim:    rgba(224,92,92,0.1);
+  --blue:       #5b8bf5;
+  --blue-dim:   rgba(91,139,245,0.1);
+  --amber:      #e8aa5a;
+  --amber-dim:  rgba(232,170,90,0.1);
+
+  /* Typography — Ubuntu system fonts */
+  --font-ui:    'Ubuntu', system-ui, sans-serif;
+  --font-head:  'Ubuntu', system-ui, sans-serif;
+  --font-mono:  'Ubuntu Mono', monospace;
+
+  /* Radius */
+  --r-sm:  5px;
+  --r-md:  8px;
+  --r-lg:  12px;
+  --r-xl:  16px;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg-base);
+  color: var(--tx-1);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
+
+/* Focus ring */
+:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; border-radius: var(--r-sm); }
+
+/* Button reset */
+button { cursor: pointer; font-family: var(--font-ui); }
+
+/* Input base */
+.field {
+  width: 100%;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  color: var(--tx-1);
+  transition: border-color 0.15s;
+  outline: none;
+}
+.field::placeholder { color: var(--tx-4); }
+.field:hover { border-color: var(--border-md); }
+.field:focus { border-color: var(--ac); }
+
+/* Card */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+/* Pill badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-red   { background: var(--red-dim);   color: var(--red);   }
+.badge-amber { background: var(--amber-dim); color: var(--amber); }
+.badge-blue  { background: var(--blue-dim);  color: var(--blue);  }
+.badge-muted { background: var(--bg-3);      color: var(--tx-3);  }
+
+/* Btn */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--ac); color: #fff; }
+.btn-primary:hover { background: var(--ac-hover); }
+.btn-ghost { background: transparent; color: var(--tx-2); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--bg-hover); color: var(--tx-1); border-color: var(--border-md); }
+.btn-danger-ghost { background: transparent; color: var(--tx-3); border: none; }
+.btn-danger-ghost:hover { color: var(--red); }
+
+/* Table */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tx-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--tx-2);
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover td { background: var(--bg-hover); }
+.data-table tbody tr { transition: background 0.1s; }
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+.modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-xl);
+  width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+
+/* Section header */
+.section-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tx-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+/* Divider */
+.divider { height: 1px; background: var(--border); margin: 0; }
+
+/* Stat number */
+.stat-num {
+  font-family: var(--font-head);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--tx-1);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* Page title */
+.page-title {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--tx-1);
+  letter-spacing: -0.01em;
+}
+
+/* ── TipTap Rich Text Editor ───────────────────── */
+.tiptap-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+}
+.tiptap-wrap:focus-within {
+  border-color: var(--ac);
+}
+.tiptap-toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
+}
+.tiptap-toolbar button {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding: 4px 7px;
+  color: var(--tx-3);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-ui);
+}
+.tiptap-toolbar button:hover { background: var(--bg-3); color: var(--tx-1); }
+.tiptap-toolbar button.is-active { background: var(--ac-dim); color: var(--ac); border-color: rgba(212,132,90,0.25); }
+.tiptap-toolbar .sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+
+.ProseMirror {
+  padding: 14px 16px;
+  min-height: 200px;
+  max-height: 48vh;
+  overflow-y: auto;
+  outline: none;
+  color: var(--tx-1);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+.ProseMirror h1 {
+  font-size: 15px; font-weight: 700; color: var(--tx-1);
+  text-align: center; margin: 0 0 4px;
+  font-family: var(--font-head); letter-spacing: -0.01em;
+}
+.ProseMirror h2 {
+  font-size: 10px; font-weight: 700; color: var(--ac);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin: 14px 0 5px;
+}
+.ProseMirror h3 {
+  font-size: 12px; font-weight: 600; color: var(--tx-1);
+  margin: 10px 0 4px;
+}
+.ProseMirror p { margin: 0 0 7px; color: var(--tx-2); }
+.ProseMirror p:last-child { margin-bottom: 0; }
+.ProseMirror strong { color: var(--tx-1); font-weight: 600; }
+.ProseMirror em { color: var(--tx-2); }
+.ProseMirror ul, .ProseMirror ol { padding-left: 20px; margin: 0 0 8px; color: var(--tx-2); }
+.ProseMirror li { margin-bottom: 3px; }
+.ProseMirror hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--tx-4); pointer-events: none; float: left; height: 0;
+}
+
+/* ── Invoice Tipizat (print) ───────────────────── */
+.tipizat {
+  background: #fff;
+  color: #1a1a1a;
+  font-family: 'Ubuntu', sans-serif;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 32px 40px;
+  max-width: 794px;
+  margin: 0 auto;
+}
+.tipizat h1 { font-size: 16px; font-weight: 700; margin-bottom: 2px; color: #111; }
+.tipizat .t-sub { font-size: 10px; color: #666; margin-bottom: 20px; }
+.tipizat .t-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; }
+.tipizat .t-party-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 5px; }
+.tipizat .t-party-name { font-size: 13px; font-weight: 700; color: #111; margin-bottom: 3px; }
+.tipizat .t-party-detail { font-size: 10px; color: #444; line-height: 1.6; }
+.tipizat table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.tipizat thead th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #666; font-weight: 600; padding: 6px 8px; border-bottom: 1.5px solid #222; text-align: left; }
+.tipizat thead th:last-child, .tipizat td:last-child { text-align: right; }
+.tipizat td { padding: 8px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; }
+.tipizat tfoot td { border-top: 1.5px solid #222; border-bottom: none; font-weight: 700; font-size: 13px; padding-top: 10px; }
+.tipizat .t-notes { font-size: 10px; color: #555; padding: 10px 12px; background: #f6f6f6; border-radius: 4px; margin-bottom: 24px; }
+.tipizat .t-sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 32px; }
+.tipizat .t-sig-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 32px; }
+.tipizat .t-sig-line { border-top: 1px solid #999; padding-top: 4px; font-size: 10px; color: #444; }
+
+@media print {
+  body > * { display: none !important; }
+  .print-frame { display: block !important; position: fixed; inset: 0; background: white; z-index: 99999; overflow: auto; }
+}
+
+/* ── Print: Raport Anual ─────────────────────────────────────────────── */
+.print-raport {
+  background: #fff; color: #1a1a1a; font-family: 'Ubuntu', sans-serif;
+  font-size: 11px; line-height: 1.6; padding: 40px; max-width: 794px; margin: 0 auto;
+}
+.print-raport h1 { font-size: 18px; font-weight: 800; margin-bottom: 4px; color: #111; }
+.print-raport .pr-header { display: flex; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #111; }
+.print-raport .pr-header p { font-size: 11px; color: #555; margin: 2px 0 0; }
+.print-raport .pr-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.print-raport .pr-stat { text-align: center; padding: 12px; border: 1px solid #ddd; border-radius: 4px; }
+.print-raport .pr-stat-value { font-size: 18px; font-weight: 800; font-family: 'Ubuntu Mono', monospace; }
+.print-raport .pr-stat-label { font-size: 9px; text-transform: uppercase; color: #666; margin-top: 4px; }
+.print-raport h2 { font-size: 14px; font-weight: 700; margin: "24px 0 12px"; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
+.print-raport table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.print-raport th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #666; padding: 8px; border-bottom: 2px solid #111; text-align: left; }
+.print-raport td { padding: 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; }
+.print-raport td:last-child { text-align: right; font-family: 'Ubuntu Mono', monospace; }
+
+/* ── Print: Declarație Unică ───────────────────────────────────────── */
+.print-declaratie {
+  background: #fff; color: #1a1a1a; font-family: 'Ubuntu', sans-serif;
+  font-size: 11px; line-height: 1.5; padding: 40px; max-width: 794px; margin: 0 auto;
+}
+.print-declaratie h1 { font-size: 16px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+.print-declaratie .pd-section { margin-bottom: 16px; border: 1px solid #333; border-radius: 4px; overflow: hidden; }
+.print-declaratie .pd-section-title { background: #f0f0f0; padding: 8px 12px; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #333; }
+.print-declaratie .pd-rubric { display: flex; align-items: center; padding: 6px 12px; border-bottom: 1px solid #eee; }
+.print-declaratie .pd-rubric:last-child { border-bottom: none; }
+.print-declaratie .pd-rubric-id { width: 50px; font-weight: 700; font-size: 10px; color: #333; font-family: 'Ubuntu Mono', monospace; }
+.print-declaratie .pd-rubric-label { flex: 1; font-size: 11px; }
+.print-declaratie .pd-rubric-value { width: 160px; text-align: right; font-family: 'Ubuntu Mono', monospace; font-weight: 700; font-size: 13px; border-bottom: 1px solid #999; padding-bottom: 2px; }
