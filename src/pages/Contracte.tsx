@@ -85,7 +85,7 @@ export default function Contracte() {
 
   useEffect(() => { load(); }, []);
 
-  const loadVars = async (type: ContractType, clientId: number | null, formData: typeof form) => {
+  const loadVars = async (_type: ContractType, clientId: number | null, formData: typeof form) => {
     const db = await getDb();
     const rows = await db.select<{ key: string; value: string }[]>("SELECT key, value FROM settings");
     const s: Record<string, string> = {};

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Users, FileText, FileSignature, X } from "lucide-react";
+import { Search, Users, FileText, FileSignature } from "lucide-react";
 import { getDb, isTauri } from "@/lib/db";
 
 interface SearchResult {

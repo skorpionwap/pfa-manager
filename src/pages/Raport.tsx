@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Printer, TrendingUp, TrendingDown, Wallet, Receipt, Users, PieChart, CheckCircle2 } from "lucide-react";
 import { getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
 import { fetchAnnualData, type AnnualData } from "@/lib/raport";
-import { calculeaza, FISCAL, type An, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
+import { calculeaza, type An, type FiscalOverrides } from "@/lib/fiscal";
 import { getCategoryLabel, CATEGORY_BADGE } from "@/lib/constants";
 import type { OperatingMode, PfaMode } from "@/types";
 
@@ -47,7 +47,6 @@ export default function Raport() {
 
   const c = data ? calculeaza(data.totalVenituri, data.totalCheltuieli, an, mode, pfaMode, normaValue, areSalariu, casBifat, overrides) : null;
   const fmt = (n: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 2 });
-  const fmtShort = (n: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 0 });
 
   const handlePrint = () => {
     setShowPrint(true);

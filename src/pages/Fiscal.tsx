@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Info, AlertTriangle, CheckCircle2, TrendingUp, Receipt, Calculator, Settings as SettingsIcon, CalendarClock, BookOpen, RefreshCw, GraduationCap, Gavel, ArrowRight, ChevronDown, Scale, Landmark, FileCheck, Shield } from "lucide-react";
+import { Info, AlertTriangle, CheckCircle2, TrendingUp, Receipt, Calculator, Settings as SettingsIcon, CalendarClock, BookOpen, GraduationCap, Gavel, ArrowRight, ChevronDown, Scale, Landmark, FileCheck, Shield } from "lucide-react";
 import { getDb, getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
-import { FISCAL, calculeaza, type An, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
+import { FISCAL, calculeaza, type An, type FiscalOverrides } from "@/lib/fiscal";
 import type { OperatingMode, PfaMode } from "@/types";
 
 export default function Fiscal() {

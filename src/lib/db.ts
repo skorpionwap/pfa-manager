@@ -131,7 +131,7 @@ export function parseFiscalOverrides(raw: Record<string, string>, an: number): {
 }
 
 export async function nextInvoiceNumber(): Promise<string> {
-  const db = await getDb();
+  await getDb();
   const series = (await getSetting("invoice_series")) || "FA";
   const counter = parseInt((await getSetting("invoice_counter")) || "1", 10);
   const number = `${series}-${String(counter).padStart(4, "0")}`;

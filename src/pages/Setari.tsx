@@ -4,7 +4,7 @@ import { getDb, setSetting, isTauri } from "@/lib/db";
 import { FISCAL, FISCAL_DEFAULTS } from "@/lib/fiscal";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/Toast";
-import type { OperatingMode } from "@/types";
+import type { OperatingMode, PfaMode } from "@/types";
 
 const DATA_SECTIONS = [
   {
@@ -305,7 +305,7 @@ export default function Setari() {
                 Salariu minim brut (RON)
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {(Object.keys(FISCAL) as Array<keyof typeof FISCAL>).map(an => {
+                {(Object.keys(FISCAL) as unknown as Array<keyof typeof FISCAL>).map(an => {
                   const key = `fiscal_SM_${an}`;
                   const defaultVal = FISCAL[an].SM;
                   const overridden = key in fiscalOverrides;

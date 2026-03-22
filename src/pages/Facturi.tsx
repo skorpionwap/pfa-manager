@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye, Info } from "lucide-react";
+import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye } from "lucide-react";
 import { getDb, nextInvoiceNumber, getSetting } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import type { Client, Invoice, InvoiceItem, OperatingMode } from "@/types";
@@ -71,7 +71,7 @@ export default function Facturi() {
     const vals: MySettings = { ...settings };
     for (const k of keys) {
       const rows = await db.select<{ value: string }[]>("SELECT value FROM settings WHERE key=?", [k]);
-      (vals as Record<string, string>)[k] = rows[0]?.value ?? "";
+      (vals as unknown as Record<string, string>)[k] = rows[0]?.value ?? "";
     }
     setSettings(vals);
     const om = (await getSetting("operating_mode")) as OperatingMode || "dda";
