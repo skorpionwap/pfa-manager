@@ -5,6 +5,7 @@ import Underline from "@tiptap/extension-underline";
 import { Plus, X, Check, Trash2, FileSignature, Bold, Italic,
   Underline as UnderlineIcon, List, ListOrdered, Minus } from "lucide-react";
 import { getDb, getSetting } from "@/lib/db";
+import { useToast } from "@/components/Toast";
 import type { Client, Contract, OperatingMode } from "@/types";
 import { TEMPLATE_HTML, substituteVars } from "@/lib/templates";
 
@@ -53,6 +54,7 @@ function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Contracte() {
+  const { toast } = useToast();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [clients, setClients]     = useState<Client[]>([]);
   const [showForm, setShowForm]   = useState(false);
@@ -156,6 +158,7 @@ export default function Contracte() {
     }
     setShowForm(false);
     load();
+    toast(editing ? "Contract actualizat" : "Contract adăugat", "success");
   };
 
   const remove = async (id: number) => {
@@ -163,6 +166,7 @@ export default function Contracte() {
     const db = await getDb();
     await db.execute("DELETE FROM contracts WHERE id=?", [id]);
     load();
+    toast("Contract șters", "info");
   };
 
   return (

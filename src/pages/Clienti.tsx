@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Search, Pencil, Trash2, X, Check, UserCircle2 } from "lucide-react";
 import { getDb } from "@/lib/db";
+import { useToast } from "@/components/Toast";
 import type { Client } from "@/types";
 
 const empty = (): Omit<Client, "id" | "created_at"> => ({
@@ -23,6 +24,7 @@ export default function Clienti() {
   const [editing, setEditing]   = useState<Client | null>(null);
   const [form, setForm]         = useState(empty());
   const searchRef               = useRef<HTMLInputElement>(null);
+  const { toast }               = useToast();
 
   const load = async () => {
     const db = await getDb();
@@ -53,6 +55,7 @@ export default function Clienti() {
     }
     setShowForm(false);
     load();
+    toast(editing ? "Client actualizat" : "Client adăugat", "success");
   };
 
   const remove = async (id: number) => {
@@ -60,6 +63,7 @@ export default function Clienti() {
     const db = await getDb();
     await db.execute("DELETE FROM clients WHERE id=?", [id]);
     load();
+    toast("Client șters", "info");
   };
 
   const filtered = clients.filter(c =>

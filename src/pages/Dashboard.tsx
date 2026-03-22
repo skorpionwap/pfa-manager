@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   TrendingUp, Users, FileText, AlertCircle,
   Receipt, ArrowUpRight, Calculator, Info,
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from "recharts";
 import { getDb, getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
+import { fetchAnnualData, type MonthlyData, type CategoryExpense } from "@/lib/raport";
 import { calculeaza, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
+import { getCategoryLabel } from "@/lib/constants";
 import type { OperatingMode, PfaMode } from "@/types";
 
 interface Stats {
@@ -16,6 +22,8 @@ interface Stats {
   expensesThisYear: number;
   expensesThisMonth: number;
 }
+
+const DONUT_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#a855f7", "#06b6d4", "#ec4899", "#f97316"];
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Dashboard Component
@@ -30,6 +38,8 @@ export default function Dashboard() {
   const [pfaMode, setPfaMode] = useState<PfaMode>("real");
   const [normaValue, setNormaValue] = useState(0);
   const [overrides, setOverrides] = useState<FiscalOverrides>({});
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryExpense[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -82,6 +92,13 @@ export default function Dashboard() {
         expensesThisYear: expensesYear,
         expensesThisMonth: expensesMonth,
       });
+
+      // Chart data
+      try {
+        const annual = await fetchAnnualData(currentYear);
+        setMonthlyData(annual.monthlyData);
+        setCategoryData(annual.categoryBreakdown);
+      } catch { /* ignore */ }
     })();
   }, []);
 
@@ -103,10 +120,10 @@ export default function Dashboard() {
         : `normă de venit: ${fmtShort(normaValue)} RON`;
 
   return (
-    <div style={{ padding: "36px 40px", maxWidth: 900 }}>
+    <div style={{ padding: "32px 40px", maxWidth: 960 }}>
 
       {/* ── Header ── */}
-      <div style={{ marginBottom: 36 }}>
+      <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
             <p style={{ fontSize: 12, color: "var(--tx-3)", marginBottom: 6, fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>
@@ -123,41 +140,131 @@ export default function Dashboard() {
       </div>
 
       {/* ── Stat cards ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
         <StatCard
           label="Clienți"
-          value={String(stats.totalClients)}
+          value={stats.totalClients}
           icon={<Users size={15} />}
           color="var(--blue)"
           bg="var(--blue-dim)"
         />
         <StatCard
           label="Facturi (luna aceasta)"
-          value={String(stats.invoicesThisMonth)}
+          value={stats.invoicesThisMonth}
           icon={<FileText size={15} />}
           color="var(--ac)"
           bg="var(--ac-dim)"
         />
         <StatCard
           label="Venituri (luna aceasta)"
-          value={`${fmtShort(stats.revenueThisMonth)} RON`}
+          value={stats.revenueThisMonth}
           icon={<TrendingUp size={15} />}
           color="var(--green)"
           bg="var(--green-dim)"
-          mono
+          format="currency"
         />
         <StatCard
           label="Neîncasate"
-          value={`${fmtShort(stats.unpaidTotal)} RON`}
+          value={stats.unpaidTotal}
           icon={<AlertCircle size={15} />}
           color={stats.unpaidTotal > 0 ? "var(--red)" : "var(--tx-3)"}
           bg={stats.unpaidTotal > 0 ? "var(--red-dim)" : "var(--bg-3)"}
-          mono
+          format="currency"
         />
       </div>
 
+      {/* ── Charts row ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 12, marginBottom: 20 }}>
+        {/* Bar chart: venituri vs cheltuieli */}
+        <div className="card" style={{ padding: "18px 20px" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--tx-2)", marginBottom: 4 }}>
+            Venituri vs Cheltuieli
+          </div>
+          <div style={{ fontSize: 11, color: "var(--tx-4)", marginBottom: 16 }}>
+            {now.getFullYear()} — lunar
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={monthlyData} barGap={2} barCategoryGap="20%">
+              <XAxis
+                dataKey="monthLabel"
+                tick={{ fontSize: 10, fill: "var(--tx-4)" }}
+                axisLine={{ stroke: "var(--border)" }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: "var(--tx-4)" }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+              />
+              <Tooltip content={<BarTooltip />} cursor={{ fill: "var(--bg-hover)", radius: 4 }} />
+              <Bar dataKey="venituri" fill="var(--green)" radius={[3, 3, 0, 0]} maxBarSize={20} />
+              <Bar dataKey="cheltuieli" fill="var(--red)" radius={[3, 3, 0, 0]} maxBarSize={20} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 8 }}>
+            <LegendDot color="var(--green)" label="Venituri" />
+            <LegendDot color="var(--red)" label="Cheltuieli" />
+          </div>
+        </div>
+
+        {/* Donut chart: categorii cheltuieli */}
+        <div className="card" style={{ padding: "18px 20px" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--tx-2)", marginBottom: 4 }}>
+            Categorii cheltuieli
+          </div>
+          <div style={{ fontSize: 11, color: "var(--tx-4)", marginBottom: 12 }}>
+            {now.getFullYear()} — distribuire
+          </div>
+          {categoryData.length > 0 ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <ResponsiveContainer width={140} height={140}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    dataKey="total"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={38}
+                    outerRadius={62}
+                    paddingAngle={2}
+                    stroke="none"
+                  >
+                    {categoryData.map((_, i) => (
+                      <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<DonutTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                {categoryData.slice(0, 6).map((cat, i) => (
+                  <div key={cat.category} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+                    <div style={{
+                      width: 8, height: 8, borderRadius: 2, flexShrink: 0,
+                      background: DONUT_COLORS[i % DONUT_COLORS.length],
+                    }} />
+                    <span style={{ color: "var(--tx-2)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {getCategoryLabel(cat.category)}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-mono)", color: "var(--tx-3)", flexShrink: 0 }}>
+                      {fmtShort(cat.total)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div style={{ height: 140, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--tx-4)", fontSize: 12 }}>
+              Nicio cheltuială înregistrată
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── Fiscal estimate ── */}
-      <div className="card" style={{ overflow: "hidden", marginBottom: 24 }}>
+      <div className="card" style={{ overflow: "hidden", marginBottom: 20 }}>
         <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -190,7 +297,7 @@ export default function Dashboard() {
 
       {/* ── PFA: Monthly expenses row (only for PFA Real) ── */}
       {mode === "pfa" && pfaMode === "real" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
           <div className="card" style={{ padding: "18px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               <Receipt size={15} color="var(--red)" />
@@ -223,7 +330,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Link to Fiscal page ── */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
         <a href="/fiscal" style={{
           display: "flex", alignItems: "center", gap: 6,
           fontSize: 12, color: "var(--ac)", textDecoration: "none", fontWeight: 600,
@@ -239,10 +346,36 @@ export default function Dashboard() {
    Sub-components
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function StatCard({ label, value, icon, color, bg, mono }: {
-  label: string; value: string; icon: React.ReactNode;
-  color: string; bg: string; mono?: boolean;
+function StatCard({ label, value, icon, color, bg, format }: {
+  label: string; value: number; icon: React.ReactNode;
+  color: string; bg: string; format?: "currency";
 }) {
+  const displayRef = useRef<HTMLDivElement>(null);
+
+  // Animate number with requestAnimationFrame
+  useEffect(() => {
+    const el = displayRef.current;
+    if (!el) return;
+    const duration = 600;
+    const start = performance.now();
+    const from = 0;
+    const to = value;
+
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      // ease-out cubic
+      const ease = 1 - Math.pow(1 - t, 3);
+      const current = from + (to - from) * ease;
+      if (format === "currency") {
+        el.textContent = `${current.toLocaleString("ro-RO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RON`;
+      } else {
+        el.textContent = Math.round(current).toLocaleString("ro-RO");
+      }
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [value, format]);
+
   return (
     <div className="card" style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -253,9 +386,14 @@ function StatCard({ label, value, icon, color, bg, mono }: {
           {icon}
         </div>
       </div>
-      <div className="stat-num" style={{ fontFamily: mono ? "var(--font-mono)" : "var(--font-head)", fontSize: mono ? 22 : 28 }}>
-        {value}
-      </div>
+      <div
+        ref={displayRef}
+        className="stat-num"
+        style={{
+          fontFamily: format === "currency" ? "var(--font-mono)" : "var(--font-head)",
+          fontSize: format === "currency" ? 22 : 28,
+        }}
+      />
     </div>
   );
 }
@@ -309,10 +447,61 @@ function FiscalBreakdown({ calc, stats, mode, pfaMode, fmt }: {
             fontWeight: type === "result" ? 700 : type === "mid" ? 600 : 400,
             color: type === "result" ? "var(--green)" : type === "neg" ? "var(--red)" : "var(--tx-1)",
           }}>
-            {type === "result" ? "" : ""}{fmt(amount)} RON
+            {fmt(amount)} RON
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ── Chart sub-components ── */
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--tx-3)" }}>
+      <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
+      {label}
+    </div>
+  );
+}
+
+function BarTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: "var(--bg-3)", border: "1px solid var(--border-md)",
+      borderRadius: "var(--r-md)", padding: "8px 12px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+    }}>
+      <div style={{ fontSize: 11, color: "var(--tx-3)", marginBottom: 6 }}>{label}</div>
+      {payload.map((p: any) => (
+        <div key={p.dataKey} style={{ fontSize: 12, color: "var(--tx-1)", display: "flex", justifyContent: "space-between", gap: 16 }}>
+          <span>{p.dataKey === "venituri" ? "Venituri" : "Cheltuieli"}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}>
+            {p.value.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DonutTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{
+      background: "var(--bg-3)", border: "1px solid var(--border-md)",
+      borderRadius: "var(--r-md)", padding: "8px 12px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+    }}>
+      <div style={{ fontSize: 12, color: "var(--tx-1)", fontWeight: 500 }}>
+        {getCategoryLabel(d.category)}
+      </div>
+      <div style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--tx-2)", marginTop: 2 }}>
+        {d.total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, X, Check, Search, Receipt, Filter } from "lucide-react";
 import { getDb } from "@/lib/db";
+import { useToast } from "@/components/Toast";
 import { CATEGORIES, CATEGORY_BADGE, getCategoryLabel } from "@/lib/constants";
 import type { Expense } from "@/types";
 
@@ -15,6 +16,7 @@ const emptyForm = (): Omit<Expense, "id" | "created_at"> => ({
 });
 
 export default function Cheltuieli() {
+  const { toast } = useToast();
   const [expenses, setExpenses]     = useState<Expense[]>([]);
   const [search, setSearch]         = useState("");
   const [filterCat, setFilterCat]   = useState("");
@@ -58,6 +60,7 @@ export default function Cheltuieli() {
     }
     setShowForm(false);
     load();
+    toast(editing ? "Cheltuială actualizată" : "Cheltuială adăugată", "success");
   };
 
   const remove = async (id: number) => {
@@ -65,6 +68,7 @@ export default function Cheltuieli() {
     const db = await getDb();
     await db.execute("DELETE FROM expenses WHERE id=?", [id]);
     load();
+    toast("Cheltuială ștearsă", "info");
   };
 
   // Filtered & aggregated

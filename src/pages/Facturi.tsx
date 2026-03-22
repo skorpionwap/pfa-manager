@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye, Info } from "lucide-react";
 import { getDb, nextInvoiceNumber, getSetting } from "@/lib/db";
+import { useToast } from "@/components/Toast";
 import type { Client, Invoice, InvoiceItem, OperatingMode } from "@/types";
 
 type Status = Invoice["status"];
@@ -33,6 +34,7 @@ interface MySettings {
 }
 
 export default function Facturi() {
+  const { toast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients]   = useState<Client[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -120,6 +122,7 @@ export default function Facturi() {
     }
     setShowForm(false);
     load();
+    toast(editing ? "Factura actualizată" : "Factura emisă", "success");
   };
 
   const remove = async (id: number) => {
@@ -127,12 +130,14 @@ export default function Facturi() {
     const db = await getDb();
     await db.execute("DELETE FROM invoices WHERE id=?", [id]);
     load();
+    toast("Factura ștearsă", "info");
   };
 
   const changeStatus = async (id: number, s: Status) => {
     const db = await getDb();
     await db.execute("UPDATE invoices SET status=? WHERE id=?", [s, id]);
     load();
+    toast(`Status actualizat: ${STATUS_LABELS[s]}`, "info");
   };
 
   const handlePrint = () => {

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw } from "lucide-react";
+import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw, Palette } from "lucide-react";
 import { getDb, setSetting, isTauri } from "@/lib/db";
 import { FISCAL, FISCAL_DEFAULTS } from "@/lib/fiscal";
+import { useTheme } from "@/components/ThemeProvider";
+import { useToast } from "@/components/Toast";
 import type { OperatingMode } from "@/types";
 
 const DATA_SECTIONS = [
@@ -58,6 +60,8 @@ export default function Setari() {
   const [pfaMode, setPfaMode]     = useState<PfaMode>("real");
   const [saved, setSaved]         = useState(false);
   const [dirty, setDirty]         = useState(false);
+  const { theme, setTheme, themes } = useTheme();
+  const { toast }                 = useToast();
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -140,6 +144,7 @@ export default function Setari() {
 
       setSaved(true);
       setDirty(false);
+      toast("Setările au fost salvate");
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       console.error("Failed to save settings:", err);
@@ -166,6 +171,45 @@ export default function Setari() {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+        {/* ── Aspect (Teme) ── */}
+        <div className="card" style={{ overflow: "hidden" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, background: "var(--bg-1)" }}>
+            <div style={{ width: 26, height: 26, borderRadius: "var(--r-sm)", background: "var(--ac-dim)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Palette size={13} color="var(--ac)" />
+            </div>
+            <span style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 13, color: "var(--tx-1)" }}>
+              Aspect
+            </span>
+          </div>
+          <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+            {themes.map(t => {
+              const active = theme.id === t.id;
+              return (
+                <button key={t.id} onClick={() => setTheme(t.id)}
+                  style={{
+                    padding: 14, borderRadius: "var(--r-lg)", cursor: "pointer", textAlign: "left",
+                    transition: "all 0.15s", border: `1.5px solid ${active ? "var(--ac)" : "var(--border)"}`,
+                    background: active ? "var(--ac-dim)" : "var(--bg-1)",
+                  }}>
+                  <div style={{
+                    width: "100%", height: 40, borderRadius: "var(--r-md)", marginBottom: 10,
+                    background: t.preview.bg, border: `1px solid ${t.preview.border}`,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0 10px",
+                  }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: t.preview.ac }} />
+                    <div style={{ width: 20, height: 4, borderRadius: 2, background: t.preview.text, opacity: 0.5 }} />
+                    <div style={{ width: 14, height: 4, borderRadius: 2, background: t.preview.text, opacity: 0.25 }} />
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: active ? "var(--ac)" : "var(--tx-1)", marginBottom: 2 }}>
+                    {t.name}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--tx-3)", lineHeight: 1.4 }}>{t.description}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* ── Mod de operare ── */}
         <div className="card" style={{ overflow: "hidden" }}>
@@ -356,22 +400,6 @@ export default function Setari() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Toast */}
-      <div style={{
-        position: "fixed", bottom: 24, right: 24,
-        background: "var(--bg-2)", border: "1px solid var(--green)",
-        borderRadius: "var(--r-lg)", padding: "10px 16px",
-        display: "flex", alignItems: "center", gap: 8,
-        fontSize: 13, color: "var(--green)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-        transition: "opacity 0.3s, transform 0.3s",
-        opacity: saved ? 1 : 0,
-        transform: saved ? "translateY(0)" : "translateY(8px)",
-        pointerEvents: "none",
-      }}>
-        <Check size={14} strokeWidth={2.5} /> Setările au fost salvate
       </div>
     </div>
   );
