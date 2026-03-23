@@ -6,7 +6,6 @@ import { CATEGORIES, CATEGORY_BADGE, getCategoryLabel } from "@/lib/constants";
 import type { Expense } from "@/types";
 
 const today = () => new Date().toISOString().slice(0, 10);
-const currentMonth = () => new Date().toISOString().slice(0, 7); // YYYY-MM
 
 const emptyForm = (): Omit<Expense, "id" | "created_at"> => ({
   date: today(),
