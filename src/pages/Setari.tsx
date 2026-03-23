@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw, Palette } from "lucide-react";
+import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw, Palette, Bot, Eye, EyeOff, FileText, Loader2, RefreshCw } from "lucide-react";
 import { getDb, setSetting, isTauri } from "@/lib/db";
+import { analyzeLegislation, listGeminiModels, type LegislationAnalysis, type GeminiModelInfo } from "@/lib/gemini";
 import { FISCAL, FISCAL_DEFAULTS } from "@/lib/fiscal";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/Toast";
@@ -60,6 +61,13 @@ export default function Setari() {
   const [pfaMode, setPfaMode]     = useState<PfaMode>("real");
   const [saved, setSaved]         = useState(false);
   const [dirty, setDirty]         = useState(false);
+  const [showApiKey, setShowApiKey]     = useState(false);
+  const [geminiModels, setGeminiModels] = useState<GeminiModelInfo[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError]   = useState("");
+  const [legisText, setLegisText]       = useState("");
+  const [legisLoading, setLegisLoading] = useState(false);
+  const [legisResult, setLegisResult]   = useState<LegislationAnalysis | null>(null);
   const { theme, setTheme, themes } = useTheme();
   const { toast }                 = useToast();
 
@@ -79,6 +87,13 @@ export default function Setari() {
         setFiscalOverrides(fMap);
         setMode((map["operating_mode"] as OperatingMode) || "dda");
         setPfaMode((map["pfa_mode"] as PfaMode) || "real");
+        if (map["gemini_api_key"]) {
+          // fire-and-forget, don't block settings load
+          setModelsLoading(true);
+          listGeminiModels().then(list => {
+            setGeminiModels(list);
+          }).catch(() => {}).finally(() => setModelsLoading(false));
+        }
       } catch (e) {
         console.error("Failed to load settings:", e);
       }
@@ -117,6 +132,39 @@ export default function Setari() {
     setPfaMode(pm);
     setDirty(true);
     setSaved(false);
+  };
+
+  const fetchModels = async (apiKey?: string) => {
+    const key = apiKey ?? values["gemini_api_key"];
+    if (!key?.trim()) { setModelsError("Introdu mai întâi cheia API."); return; }
+    setModelsLoading(true);
+    setModelsError("");
+    try {
+      const list = await listGeminiModels();
+      setGeminiModels(list);
+      if (list.length && !values["gemini_model"]) {
+        const flash = list.find(m => m.name.includes("flash")) ?? list[0];
+        set("gemini_model", flash.name);
+      }
+    } catch (e) {
+      setModelsError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setModelsLoading(false);
+    }
+  };
+
+  const handleAnalyzeLegis = async () => {
+    if (!isTauri() || !legisText.trim()) return;
+    setLegisLoading(true);
+    setLegisResult(null);
+    try {
+      const result = await analyzeLegislation(legisText);
+      setLegisResult(result);
+    } catch (e) {
+      alert(`Eroare AI: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setLegisLoading(false);
+    }
   };
 
   const save = async () => {
@@ -371,6 +419,136 @@ export default function Setari() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Integrare AI ── */}
+        <div className="card" style={{ overflow: "hidden" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, background: "var(--bg-1)" }}>
+            <div style={{ width: 26, height: 26, borderRadius: "var(--r-sm)", background: "var(--ac-dim)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Bot size={13} color="var(--ac)" />
+            </div>
+            <span style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 13, color: "var(--tx-1)" }}>
+              Integrare AI
+            </span>
+          </div>
+          <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ fontSize: 12, color: "var(--tx-3)", lineHeight: 1.6 }}>
+              Folosit pentru analiza contractelor primite de la clienți și identificarea clauzelor problematice.
+              Obține o cheie gratuită de la{" "}
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--tx-2)" }}>aistudio.google.com</span>.
+            </p>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 6 }}>
+                Gemini API Key
+              </div>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  className="field"
+                  type={showApiKey ? "text" : "password"}
+                  value={values["gemini_api_key"] ?? ""}
+                  onChange={e => set("gemini_api_key", e.target.value)}
+                  placeholder="AIzaSy..."
+                  style={{ fontFamily: "var(--font-mono)", fontSize: 12, paddingRight: 36 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(v => !v)}
+                  style={{ position: "absolute", right: 8, background: "none", border: "none", cursor: "pointer", color: "var(--tx-3)", display: "flex", padding: 4 }}
+                  title={showApiKey ? "Ascunde" : "Arată"}
+                >
+                  {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Model selector */}
+            <div>
+              <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 6 }}>
+                Model Gemini
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  className="field"
+                  value={values["gemini_model"] ?? ""}
+                  onChange={e => set("gemini_model", e.target.value)}
+                  disabled={geminiModels.length === 0}
+                  style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 12 }}
+                >
+                  {geminiModels.length === 0 && (
+                    <option value="">{modelsLoading ? "Se încarcă..." : "— apasă Refresh —"}</option>
+                  )}
+                  {geminiModels.map(m => (
+                    <option key={m.name} value={m.name}>{m.display_name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => fetchModels()}
+                  disabled={modelsLoading}
+                  title="Reîncarcă lista de modele"
+                  style={{ padding: "0 12px", flexShrink: 0 }}
+                >
+                  {modelsLoading
+                    ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+                    : <RefreshCw size={13} />}
+                </button>
+              </div>
+              {modelsError && (
+                <div style={{ fontSize: 11, color: "var(--red)", marginTop: 4 }}>{modelsError}</div>
+              )}
+              {geminiModels.length > 0 && !modelsLoading && (
+                <div style={{ fontSize: 11, color: "var(--tx-4)", marginTop: 4 }}>
+                  {geminiModels.length} modele disponibile
+                </div>
+              )}
+            </div>
+
+            {/* Monitor legislație */}
+            <div style={{ paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <FileText size={13} color="var(--tx-3)" />
+                <span style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Monitor legislație
+                </span>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--tx-3)", lineHeight: 1.6, marginBottom: 10 }}>
+                Lipește textul unui OUG sau al unei legi fiscale — AI extrage modificările relevante pentru PFA/DDA.
+              </p>
+              <textarea className="field" rows={4} value={legisText} onChange={e => setLegisText(e.target.value)}
+                placeholder="Lipește textul actului normativ aici..." style={{ resize: "vertical", fontSize: 12 }} />
+              <button className="btn btn-ghost" onClick={handleAnalyzeLegis}
+                disabled={legisLoading || !legisText.trim()}
+                style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                {legisLoading ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Bot size={13} />}
+                {legisLoading ? "Se analizează..." : "Analizează cu AI"}
+              </button>
+
+              {legisResult && (
+                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ padding: "10px 14px", background: "var(--bg-2)", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "var(--tx-1)", marginBottom: 4 }}>{legisResult.titlu}</div>
+                    <div style={{ fontSize: 12, color: "var(--tx-3)", lineHeight: 1.6 }}>{legisResult.rezumat}</div>
+                  </div>
+                  {legisResult.modificari.length === 0 ? (
+                    <p style={{ fontSize: 12, color: "var(--tx-3)" }}>Nicio modificare relevantă pentru PFA/DDA identificată.</p>
+                  ) : (
+                    legisResult.modificari.map((m, i) => (
+                      <div key={i} style={{ padding: "10px 14px", background: "var(--ac-dim)", borderRadius: "var(--r-md)", border: "1px solid var(--ac)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                        <div>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--ac)", marginBottom: 4 }}>{m.camp}</div>
+                          <div style={{ fontSize: 12, color: "var(--tx-3)", lineHeight: 1.5 }}>{m.explicatie}</div>
+                        </div>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: "var(--ac)", flexShrink: 0 }}>
+                          {m.camp.startsWith("SM") ? `${m.valoare_noua.toLocaleString("ro-RO")} RON` : `${(m.valoare_noua * 100).toFixed(0)}%`}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

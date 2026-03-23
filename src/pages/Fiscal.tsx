@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Info, AlertTriangle, CheckCircle2, TrendingUp, Receipt, Calculator, Settings as SettingsIcon, CalendarClock, BookOpen, GraduationCap, Gavel, ArrowRight, ChevronDown, Scale, Landmark, FileCheck, Shield } from "lucide-react";
-import { getDb, getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
+import { Info, AlertTriangle, CheckCircle2, TrendingUp, Receipt, Calculator, Settings as SettingsIcon, CalendarClock, BookOpen, GraduationCap, Gavel, ArrowRight, ChevronDown, Scale, Landmark, FileCheck, Shield, Bot, Send, Loader2 } from "lucide-react";
+import { getDb, getSetting, getFiscalOverrides, parseFiscalOverrides, isTauri } from "@/lib/db";
+import { askFiscalQuestion, buildFiscalContext } from "@/lib/gemini";
 import { FISCAL, FISCAL_YEARS, calculeaza, type An, type FiscalOverrides } from "@/lib/fiscal";
 import type { OperatingMode, PfaMode } from "@/types";
 
@@ -21,6 +22,10 @@ export default function Fiscal() {
   
   const [loading, setLoading]     = useState(true);
   const [overrides, setOverrides] = useState<FiscalOverrides>({});
+  const [chatOpen, setChatOpen]   = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "ai"; text: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -52,6 +57,24 @@ export default function Fiscal() {
   const exp  = isManual ? (parseFloat(manualExp) || 0) : dbExpenses;
   const c = calculeaza(brut, exp, an, mode, pfaMode, normaValue, areSalariu, casBifat, overrides);
   const fmt = (n: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 2 });
+
+  const sendChatMessage = async () => {
+    const q = chatInput.trim();
+    if (!q || chatLoading) return;
+    if (!isTauri()) return;
+    setChatMessages(m => [...m, { role: "user", text: q }]);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const context = buildFiscalContext({ an, mode, brut, exp, cass: c.cass, cas: c.cas, impozit: c.impozit, totalTaxe: c.totalTaxe, netEfectiv: c.netEfectiv, rataRetentie: c.rataRetentie, sm: c.sm });
+      const answer = await askFiscalQuestion(q, context);
+      setChatMessages(m => [...m, { role: "ai", text: answer }]);
+    } catch (e) {
+      setChatMessages(m => [...m, { role: "ai", text: `Eroare: ${e instanceof Error ? e.message : String(e)}` }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   if (loading) return <div style={{ padding: 40, color: "var(--tx-3)" }}>Se încarcă...</div>;
 
@@ -241,6 +264,59 @@ export default function Fiscal() {
       )}
 
       {tab === "ghid" && <GhidFiscal />}
+
+      {/* ── Asistent fiscal AI ──────────────────────────────────────────────── */}
+      <div style={{ marginTop: 32 }}>
+        <button onClick={() => setChatOpen(v => !v)}
+          style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: "var(--r-lg)", border: "1px solid var(--border)", background: chatOpen ? "var(--ac-dim)" : "var(--bg-1)", color: chatOpen ? "var(--ac)" : "var(--tx-2)", cursor: "pointer", fontSize: 13, fontWeight: 500, width: "100%", transition: "all 0.15s" }}>
+          <Bot size={15} color={chatOpen ? "var(--ac)" : "var(--tx-3)"} />
+          Asistent fiscal AI
+          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--tx-4)" }}>
+            {chatOpen ? "▲ Închide" : "▼ Întreabă ceva despre situația ta fiscală"}
+          </span>
+        </button>
+
+        {chatOpen && (
+          <div className="card" style={{ marginTop: 8, overflow: "hidden" }}>
+            <div style={{ padding: "16px 20px", minHeight: 120, maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+              {chatMessages.length === 0 && (
+                <div style={{ color: "var(--tx-4)", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+                  <Bot size={24} style={{ margin: "0 auto 8px", display: "block", opacity: 0.3 }} />
+                  Exemple: "Merită să mai fac cheltuieli deductibile?" · "Când plătesc CASS?" · "Cum optimizez impozitul?"
+                </div>
+              )}
+              {chatMessages.map((m, i) => (
+                <div key={i} style={{
+                  alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                  maxWidth: "82%", padding: "10px 14px", borderRadius: "var(--r-lg)",
+                  fontSize: 13, lineHeight: 1.6,
+                  background: m.role === "user" ? "var(--ac)" : "var(--bg-2)",
+                  color: m.role === "user" ? "#fff" : "var(--tx-1)",
+                  border: m.role === "ai" ? "1px solid var(--border)" : "none",
+                  whiteSpace: "pre-wrap",
+                }}>
+                  {m.text}
+                </div>
+              ))}
+              {chatLoading && (
+                <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, color: "var(--tx-3)", fontSize: 13 }}>
+                  <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Se gândește...
+                </div>
+              )}
+            </div>
+            <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", display: "flex", gap: 8, background: "var(--bg-1)" }}>
+              <input className="field" value={chatInput} onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendChatMessage())}
+                placeholder="Scrie întrebarea ta fiscală..."
+                style={{ flex: 1 }} />
+              <button className="btn btn-primary" onClick={sendChatMessage}
+                disabled={chatLoading || !chatInput.trim()} style={{ padding: "8px 14px" }}>
+                <Send size={13} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <style>{`
         .btn-tab { flex: 1; padding: 12px 20px; border: none; background: transparent; border-radius: var(--r-lg); cursor: pointer; font-size: 14px; color: var(--tx-3); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 500; }

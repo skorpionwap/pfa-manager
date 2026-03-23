@@ -3,8 +3,9 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { Plus, X, Check, Trash2, FileSignature, Bold, Italic,
-  Underline as UnderlineIcon, List, ListOrdered, Minus } from "lucide-react";
-import { getDb, getSetting } from "@/lib/db";
+  Underline as UnderlineIcon, List, ListOrdered, Minus, Sparkles, Loader2, AlertTriangle } from "lucide-react";
+import { getDb, getSetting, isTauri } from "@/lib/db";
+import { pickAndAnalyzeContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
 import { useToast } from "@/components/Toast";
 import type { Client, Contract, OperatingMode } from "@/types";
 import { TEMPLATE_HTML, substituteVars } from "@/lib/templates";
@@ -20,6 +21,20 @@ const STATUS_BADGE: Record<ContractStatus, string> = {
   activ: "badge badge-green",
   expirat: "badge badge-muted",
   reziliat: "badge badge-red",
+  pending: "badge badge-amber",
+};
+
+const STATUS_LABELS: Record<ContractStatus, string> = {
+  activ: "activ",
+  expirat: "expirat",
+  reziliat: "reziliat",
+  pending: "spre aprobare",
+};
+
+const RISK_STYLE: Record<ContractRisk["nivel"], { border: string; label: string }> = {
+  ridicat: { border: "#ef4444", label: "badge badge-red" },
+  mediu:   { border: "#f59e0b", label: "badge badge-amber" },
+  scăzut:  { border: "#22c55e", label: "badge badge-green" },
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -55,12 +70,14 @@ function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Contracte() {
   const { toast } = useToast();
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [clients, setClients]     = useState<Client[]>([]);
-  const [showForm, setShowForm]   = useState(false);
-  const [editing, setEditing]     = useState<Contract | null>(null);
-  const [form, setForm]           = useState(empty());
-  const [mode, setMode]           = useState<OperatingMode>("dda");
+  const [contracts, setContracts]   = useState<Contract[]>([]);
+  const [clients, setClients]       = useState<Client[]>([]);
+  const [showForm, setShowForm]     = useState(false);
+  const [editing, setEditing]       = useState<Contract | null>(null);
+  const [form, setForm]             = useState(empty());
+  const [mode, setMode]             = useState<OperatingMode>("dda");
+  const [analyzeLoading, setAnalyzeLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<ContractAnalysis | null>(null);
 
   const editor = useEditor({
     extensions: [StarterKit, Underline],
@@ -172,6 +189,41 @@ export default function Contracte() {
     toast("Contract șters", "info");
   };
 
+  const handleAnalyzePDF = async () => {
+    if (!isTauri()) { toast("Disponibil doar în aplicația desktop", "error"); return; }
+    setAnalyzeLoading(true);
+    try {
+      const result = await pickAndAnalyzeContract();
+      if (result) setAnalysisResult(result.analysis);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Eroare la analiza AI", "error");
+    } finally {
+      setAnalyzeLoading(false);
+    }
+  };
+
+  const importAnalysis = (analysis: ContractAnalysis) => {
+    const matchedClient = clients.find(c =>
+      c.name.toLowerCase().includes(analysis.parti.beneficiar.toLowerCase()) ||
+      analysis.parti.beneficiar.toLowerCase().includes(c.name.toLowerCase())
+    );
+    const f = empty();
+    f.type    = analysis.tip === "cesiune" ? "cesiune" : "prestari";
+    f.number  = analysis.numar || "";
+    f.date    = analysis.data  || today();
+    f.amount  = analysis.valoare || 0;
+    f.status  = "pending";
+    f.client_id = matchedClient?.id ?? null;
+    f.notes   = !matchedClient && analysis.parti.beneficiar
+      ? `Client identificat în contract: ${analysis.parti.beneficiar}`
+      : "";
+    setForm(f);
+    setEditing(null);
+    setAnalysisResult(null);
+    editor?.commands.setContent("");
+    setShowForm(true);
+  };
+
   return (
     <div style={{ padding: "36px 40px" }}>
       {/* Header */}
@@ -182,7 +234,16 @@ export default function Contracte() {
             Mod curent: <strong style={{ color: "var(--tx-1)" }}>{mode === "dda" ? "Drepturi de autor" : "PFA"}</strong>
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openNew}><Plus size={14} strokeWidth={2.5} /> Contract nou</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-ghost" onClick={handleAnalyzePDF} disabled={analyzeLoading}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {analyzeLoading
+              ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+              : <Sparkles size={14} />}
+            {analyzeLoading ? "Se analizează..." : "Analizează PDF client"}
+          </button>
+          <button className="btn btn-primary" onClick={openNew}><Plus size={14} strokeWidth={2.5} /> Contract nou</button>
+        </div>
       </div>
 
       {/* Table */}
@@ -211,7 +272,7 @@ export default function Contracte() {
                 <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--tx-1)" }}>
                   {c.amount > 0 ? `${c.amount.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON` : "—"}
                 </td>
-                <td><span className={STATUS_BADGE[c.status]}>{c.status}</span></td>
+                <td><span className={STATUS_BADGE[c.status]}>{STATUS_LABELS[c.status]}</span></td>
                 <td>
                   <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                     <button className="btn btn-ghost" style={{ padding: "5px 8px" }} onClick={() => openEdit(c)}>
@@ -227,6 +288,101 @@ export default function Contracte() {
           </tbody>
         </table>
       </div>
+
+      {/* ── AI Analysis modal ────────────────────────────────────────────────── */}
+      {analysisResult && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setAnalysisResult(null)}>
+          <div className="modal" style={{ width: "min(700px, 96vw)", maxHeight: "88vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
+            {/* Header */}
+            <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Sparkles size={15} color="var(--ac)" />
+                <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 15, color: "var(--tx-1)" }}>
+                  Analiză contract AI
+                </h3>
+                {analysisResult.riscuri.filter(r => r.nivel === "ridicat").length > 0 && (
+                  <span className="badge badge-red" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <AlertTriangle size={10} />
+                    {analysisResult.riscuri.filter(r => r.nivel === "ridicat").length} riscuri ridicate
+                  </span>
+                )}
+              </div>
+              <button onClick={() => setAnalysisResult(null)} style={{ background: "var(--bg-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 6, color: "var(--tx-3)", display: "flex", cursor: "pointer" }}>
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflow: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+              {/* Extracted fields */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {[
+                  { label: "Tip contract", value: analysisResult.tip === "cesiune" ? "Cesiune drepturi autor" : analysisResult.tip === "prestari" ? "Prestări servicii" : "Altul" },
+                  { label: "Beneficiar (client)", value: analysisResult.parti.beneficiar || "—" },
+                  { label: "Nr. contract",  value: analysisResult.numar  || "—" },
+                  { label: "Dată",          value: analysisResult.data   || "—" },
+                  { label: "Valoare",       value: analysisResult.valoare > 0 ? `${analysisResult.valoare.toLocaleString("ro-RO")} RON` : "—" },
+                  { label: "Prestator identificat", value: analysisResult.parti.prestator || "—" },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ background: "var(--bg-1)", borderRadius: "var(--r-md)", padding: "10px 14px", border: "1px solid var(--border)" }}>
+                    <div style={{ fontSize: 10, color: "var(--tx-3)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 13, color: "var(--tx-1)", fontWeight: 500 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Rezumat */}
+              <div>
+                <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Rezumat</div>
+                <p style={{ fontSize: 13, color: "var(--tx-2)", lineHeight: 1.7, background: "var(--bg-1)", padding: "12px 14px", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
+                  {analysisResult.rezumat}
+                </p>
+              </div>
+
+              {/* Riscuri */}
+              {analysisResult.riscuri.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+                    Clauze de atenționat ({analysisResult.riscuri.length})
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {analysisResult.riscuri.map((r, i) => (
+                      <div key={i} style={{ borderLeft: `3px solid ${RISK_STYLE[r.nivel]?.border ?? "#888"}`, background: "var(--bg-1)", borderRadius: "0 var(--r-md) var(--r-md) 0", padding: "10px 14px", border: "1px solid var(--border)", borderLeftWidth: 3 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <span className={RISK_STYLE[r.nivel]?.label ?? "badge badge-muted"}>{r.nivel}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--tx-1)" }}>{r.clauza}</span>
+                        </div>
+                        <p style={{ fontSize: 12, color: "var(--tx-3)", lineHeight: 1.6, margin: 0 }}>{r.detaliu}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {analysisResult.riscuri.length === 0 && (
+                <div style={{ textAlign: "center", padding: "16px 0", color: "var(--tx-3)", fontSize: 13 }}>
+                  <Check size={20} style={{ margin: "0 auto 8px", display: "block", color: "#22c55e" }} />
+                  Nicio clauză problematică identificată
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "14px 24px 18px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <span style={{ fontSize: 11, color: "var(--tx-4)" }}>Analiză generată de Gemini AI · Verifică întotdeauna cu un jurist</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-ghost" onClick={() => setAnalysisResult(null)}>Anulează</button>
+                <button className="btn btn-primary" onClick={() => importAnalysis(analysisResult)}>
+                  <Check size={13} strokeWidth={2.5} />
+                  Creează contract (spre aprobare)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Contract form modal ──────────────────────────────────────────────── */}
       {showForm && (
@@ -287,6 +443,7 @@ export default function Contracte() {
                     <Label>Status</Label>
                     <select className="field" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as ContractStatus }))}>
                       <option value="activ">Activ</option>
+                      <option value="pending">Spre aprobare</option>
                       <option value="expirat">Expirat</option>
                       <option value="reziliat">Reziliat</option>
                     </select>

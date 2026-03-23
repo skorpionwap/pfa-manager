@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, X, Check, Search, Receipt, Filter } from "lucide-react";
-import { getDb } from "@/lib/db";
+import { Plus, Pencil, Trash2, X, Check, Search, Receipt, Filter, Sparkles, Loader2 } from "lucide-react";
+import { getDb, isTauri } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import { CATEGORIES, CATEGORY_BADGE, getCategoryLabel } from "@/lib/constants";
+import { pickAndAnalyzeReceipt, type ExtractedReceipt } from "@/lib/gemini";
 import type { Expense } from "@/types";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -23,6 +24,8 @@ export default function Cheltuieli() {
   const [showForm, setShowForm]     = useState(false);
   const [editing, setEditing]       = useState<Expense | null>(null);
   const [form, setForm]             = useState(emptyForm());
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanResult, setScanResult]   = useState<ExtractedReceipt | null>(null);
 
   const load = async () => {
     const db = await getDb();
@@ -60,6 +63,26 @@ export default function Cheltuieli() {
     setShowForm(false);
     load();
     toast(editing ? "Cheltuială actualizată" : "Cheltuială adăugată", "success");
+  };
+
+  const handleScanReceipt = async () => {
+    if (!isTauri()) { toast("Disponibil doar în aplicația desktop", "error"); return; }
+    setScanLoading(true);
+    try {
+      const result = await pickAndAnalyzeReceipt();
+      if (result) setScanResult(result);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Eroare la scanare AI", "error");
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
+  const importScan = (r: ExtractedReceipt) => {
+    setEditing(null);
+    setForm({ date: r.data || today(), description: r.descriere || r.furnizor, amount: r.suma, category: r.categorie || "altele" });
+    setScanResult(null);
+    setShowForm(true);
   };
 
   const remove = async (id: number) => {
@@ -108,9 +131,16 @@ export default function Cheltuieli() {
             {expenses.length} {expenses.length === 1 ? "cheltuială înregistrată" : "cheltuieli înregistrate"}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openNew}>
-          <Plus size={14} strokeWidth={2.5} /> Cheltuială nouă
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-ghost" onClick={handleScanReceipt} disabled={scanLoading}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {scanLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Sparkles size={14} />}
+            {scanLoading ? "Se scanează..." : "Scanează bon AI"}
+          </button>
+          <button className="btn btn-primary" onClick={openNew}>
+            <Plus size={14} strokeWidth={2.5} /> Cheltuială nouă
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -253,6 +283,48 @@ export default function Cheltuieli() {
           </tbody>
         </table>
       </div>
+
+      {/* ── Scan result modal ─────────────────────────────────────────────── */}
+      {scanResult && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setScanResult(null)}>
+          <div className="modal" style={{ width: "min(480px, 96vw)" }}>
+            <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Sparkles size={15} color="var(--ac)" />
+                <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 15, color: "var(--tx-1)" }}>
+                  Bon scanat AI
+                </h3>
+              </div>
+              <button onClick={() => setScanResult(null)} style={{ background: "var(--bg-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 6, color: "var(--tx-3)", display: "flex", cursor: "pointer" }}>
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { label: "Furnizor",   value: scanResult.furnizor || "—" },
+                { label: "Dată",       value: scanResult.data     || "—" },
+                { label: "Sumă",       value: scanResult.suma > 0 ? `${scanResult.suma.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON` : "—" },
+                { label: "Categorie",  value: getCategoryLabel(scanResult.categorie) },
+                { label: "Descriere",  value: scanResult.descriere || "—" },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
+                  <span style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+                  <span style={{ fontSize: 13, color: "var(--tx-1)", fontWeight: 500 }}>{value}</span>
+                </div>
+              ))}
+              <p style={{ fontSize: 11, color: "var(--tx-4)", marginTop: 4 }}>
+                Verifică datele înainte de a le importa — AI poate greși.
+              </p>
+            </div>
+            <div style={{ padding: "12px 24px 18px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setScanResult(null)}>Anulează</button>
+              <button className="btn btn-primary" onClick={() => importScan(scanResult)}>
+                <Check size={13} strokeWidth={2.5} /> Importă cheltuială
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showForm && (

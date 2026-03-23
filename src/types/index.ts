@@ -39,7 +39,7 @@ export interface Contract {
   date: string;
   description: string;
   amount: number;
-  status: "activ" | "expirat" | "reziliat";
+  status: "activ" | "expirat" | "reziliat" | "pending";
   notes: string;
   created_at: string;
 }

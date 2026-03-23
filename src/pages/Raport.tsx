@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
-import { Printer, TrendingUp, TrendingDown, Wallet, Receipt, Users, PieChart, CheckCircle2 } from "lucide-react";
-import { getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
+import { Printer, TrendingUp, TrendingDown, Wallet, Receipt, Users, PieChart, CheckCircle2, Sparkles, Loader2 } from "lucide-react";
+import { getSetting, getFiscalOverrides, parseFiscalOverrides, isTauri } from "@/lib/db";
+import { generateAnnualNarrative } from "@/lib/gemini";
 import { fetchAnnualData, type AnnualData } from "@/lib/raport";
 import { calculeaza, FISCAL_YEARS, type An, type FiscalOverrides } from "@/lib/fiscal";
 import { getCategoryLabel, CATEGORY_BADGE } from "@/lib/constants";
@@ -15,8 +16,10 @@ export default function Raport() {
   const [areSalariu, setAreSalariu] = useState(false);
   const [casBifat, setCasBifat]   = useState(false);
   const [loading, setLoading]     = useState(true);
-  const [showPrint, setShowPrint] = useState(false);
-  const [overrides, setOverrides] = useState<FiscalOverrides>({});
+  const [showPrint, setShowPrint]         = useState(false);
+  const [overrides, setOverrides]         = useState<FiscalOverrides>({});
+  const [narrativeLoading, setNarrativeLoading] = useState(false);
+  const [narrativeText, setNarrativeText] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
 
   const [userName, setUserName]   = useState("");
@@ -56,6 +59,27 @@ export default function Raport() {
 
   const handlePrint = () => setShowPrint(true);
 
+  const handleNarrative = async () => {
+    if (!isTauri() || !data || !c) return;
+    setNarrativeLoading(true);
+    setNarrativeText("");
+    try {
+      const luniActive = data.monthlyData.filter(m => m.venituri > 0 || m.cheltuieli > 0).length;
+      const text = await generateAnnualNarrative({
+        an, mode, totalVenituri: data.totalVenituri, totalCheltuieli: data.totalCheltuieli,
+        venitNet: c.venitNet, totalTaxe: c.totalTaxe, netEfectiv: c.netEfectiv,
+        rataRetentie: c.rataRetentie, invoiceCount: data.invoiceCount,
+        expenseCount: data.expenseCount, topClients: data.topClients,
+        categoryBreakdown: data.categoryBreakdown, luniActive,
+      });
+      setNarrativeText(text);
+    } catch (e) {
+      setNarrativeText(`Eroare: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setNarrativeLoading(false);
+    }
+  };
+
   if (loading || !data || !c) return <div style={{ padding: 40, color: "var(--tx-3)" }}>Se încarcă...</div>;
 
   const modeLabel = mode === "dda" ? "Drepturi de autor" : `PFA ${pfaMode === "real" ? "Sistem Real" : "Normă de Venit"}`;
@@ -87,6 +111,11 @@ export default function Raport() {
               </button>
             ))}
           </div>
+          <button className="btn btn-ghost" onClick={handleNarrative} disabled={narrativeLoading}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {narrativeLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Sparkles size={14} />}
+            {narrativeLoading ? "Se generează..." : "Narativă AI"}
+          </button>
           <button className="btn btn-primary" onClick={handlePrint}>
             <Printer size={14} strokeWidth={2.5} /> Printează
           </button>
@@ -385,6 +414,22 @@ export default function Raport() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── AI Narrative ────────────────────────────────────────────────── */}
+      {narrativeText && (
+        <div className="card" style={{ padding: "24px 28px", marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <Sparkles size={16} color="var(--ac)" />
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--tx-1)" }}>Narativă anuală generată de AI</span>
+            <button onClick={() => setNarrativeText("")} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--tx-3)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {narrativeText.split(/\n\n+/).filter(Boolean).map((para, i) => (
+              <p key={i} style={{ fontSize: 13, lineHeight: 1.7, color: "var(--tx-2)", margin: 0 }}>{para}</p>
+            ))}
           </div>
         </div>
       )}
