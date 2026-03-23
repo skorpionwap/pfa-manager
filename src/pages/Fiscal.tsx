@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Info, AlertTriangle, CheckCircle2, TrendingUp, Receipt, Calculator, Settings as SettingsIcon, CalendarClock, BookOpen, GraduationCap, Gavel, ArrowRight, ChevronDown, Scale, Landmark, FileCheck, Shield } from "lucide-react";
 import { getDb, getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
-import { FISCAL, calculeaza, type An, type FiscalOverrides } from "@/lib/fiscal";
+import { FISCAL, FISCAL_YEARS, calculeaza, type An, type FiscalOverrides } from "@/lib/fiscal";
 import type { OperatingMode, PfaMode } from "@/types";
 
 export default function Fiscal() {
@@ -72,7 +72,7 @@ export default function Fiscal() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, background: "var(--bg-2)", padding: 4, borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
-          {([2025, 2026] as An[]).map(a => (
+          {FISCAL_YEARS.map(a => (
             <button key={a} onClick={() => setAn(a)} 
               style={{ padding: "6px 16px", borderRadius: "var(--r-sm)", border: "none", 
                 background: an === a ? "var(--ac)" : "transparent", 

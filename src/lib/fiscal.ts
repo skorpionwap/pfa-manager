@@ -14,6 +14,7 @@ export const FISCAL_DEFAULTS = {
 } as const;
 
 export type An = keyof typeof FISCAL;
+export const FISCAL_YEARS = Object.keys(FISCAL).map(Number) as An[];
 
 export interface FiscalOverrides {
   SM?: number;

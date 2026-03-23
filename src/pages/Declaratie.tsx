@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Printer, CheckCircle2, Info, ChevronDown, AlertTriangle } from "lucide-react";
 import { getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
 import { fetchAnnualData } from "@/lib/raport";
-import { calculeaza, FISCAL, type An, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
+import { calculeaza, FISCAL, FISCAL_YEARS, type An, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
 import type { OperatingMode, PfaMode } from "@/types";
 
 interface Rubric {
@@ -167,7 +167,7 @@ export default function Declaratie() {
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 6, background: "var(--bg-2)", padding: 4, borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
-            {([2025, 2026] as An[]).map(a => (
+            {FISCAL_YEARS.map(a => (
               <button key={a} onClick={() => setAn(a)}
                 style={{ padding: "6px 16px", borderRadius: "var(--r-sm)", border: "none",
                   background: an === a ? "var(--ac)" : "transparent",

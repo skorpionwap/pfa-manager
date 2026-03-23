@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Printer, TrendingUp, TrendingDown, Wallet, Receipt, Users, PieChart, CheckCircle2 } from "lucide-react";
 import { getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
 import { fetchAnnualData, type AnnualData } from "@/lib/raport";
-import { calculeaza, type An, type FiscalOverrides } from "@/lib/fiscal";
+import { calculeaza, FISCAL_YEARS, type An, type FiscalOverrides } from "@/lib/fiscal";
 import { getCategoryLabel, CATEGORY_BADGE } from "@/lib/constants";
 import type { OperatingMode, PfaMode } from "@/types";
 
@@ -77,7 +77,7 @@ export default function Raport() {
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 6, background: "var(--bg-2)", padding: 4, borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
-            {([2025, 2026] as An[]).map(a => (
+            {FISCAL_YEARS.map(a => (
               <button key={a} onClick={() => setAn(a)}
                 style={{ padding: "6px 16px", borderRadius: "var(--r-sm)", border: "none",
                   background: an === a ? "var(--ac)" : "transparent",

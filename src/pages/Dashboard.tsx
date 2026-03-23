@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   TrendingUp, Users, FileText, AlertCircle,
   Receipt, ArrowUpRight, Calculator, Info,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -10,7 +11,7 @@ import {
 } from "recharts";
 import { getDb, getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
 import { fetchAnnualData, type MonthlyData, type CategoryExpense } from "@/lib/raport";
-import { calculeaza, type An, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
+import { calculeaza, FISCAL_YEARS, type An, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
 import { getCategoryLabel } from "@/lib/constants";
 import type { OperatingMode, PfaMode } from "@/types";
 
@@ -42,22 +43,22 @@ export default function Dashboard() {
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryExpense[]>([]);
   const [fiscalYear, setFiscalYear] = useState<An>(2026);
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   useEffect(() => {
     (async () => {
       const db = await getDb();
-      const now = new Date();
-      const year = String(now.getFullYear());
-      const month = now.toISOString().slice(0, 7);
+      const month = selectedMonth;
+      const year = selectedMonth.slice(0, 4);
+      const currentYear = parseInt(year);
 
       const m = (await getSetting("operating_mode")) as OperatingMode || "dda";
       const pm = (await getSetting("pfa_mode")) as PfaMode || "real";
       const nv = parseFloat(await getSetting("pfa_norma_valoare")) || 0;
       setMode(m); setPfaMode(pm); setNormaValue(nv);
 
-      const currentYear = now.getFullYear();
-      // Clamp to known fiscal years; extend FISCAL object when adding new years
-      const clampedYear = (currentYear in { 2025: 1, 2026: 1 } ? currentYear : 2026) as An;
+      const knownYears = FISCAL_YEARS.map(Number);
+      const clampedYear = (knownYears.includes(currentYear) ? currentYear : knownYears[knownYears.length - 1]) as An;
       setFiscalYear(clampedYear);
       const raw = await getFiscalOverrides(currentYear);
       setOverrides(parseFiscalOverrides(raw, currentYear));
@@ -105,15 +106,24 @@ export default function Dashboard() {
         setCategoryData(annual.categoryBreakdown);
       } catch { /* ignore */ }
     })();
-  }, []);
+  }, [selectedMonth]);
 
   const fmt = (n: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 2 });
   const fmtShort = (n: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 0 });
 
   const calc = calculeaza(stats.revenueThisYear, stats.expensesThisYear, fiscalYear, mode, pfaMode, normaValue, false, false, overrides);
 
-  const now = new Date();
-  const monthLabel = now.toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
+  const selectedYear = selectedMonth.slice(0, 4);
+  const monthLabel = new Date(`${selectedMonth}-01`).toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
+  const _td = new Date();
+  const todayMonth = `${_td.getFullYear()}-${String(_td.getMonth() + 1).padStart(2, "0")}`;
+  const isCurrentMonth = selectedMonth === todayMonth;
+
+  function shiftMonth(delta: number) {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
 
   const modeLabel =
     mode === "dda" ? "Drepturi de autor" : `PFA ${pfaMode === "real" ? "Sistem Real" : "Normă de Venit"}`;
@@ -131,9 +141,22 @@ export default function Dashboard() {
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
-            <p style={{ fontSize: 12, color: "var(--tx-3)", marginBottom: 6, fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>
-              {monthLabel}
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <button onClick={() => shiftMonth(-1)} style={{ display: "flex", alignItems: "center", padding: "2px 4px", background: "none", border: "none", cursor: "pointer", color: "var(--tx-3)", borderRadius: "var(--r-sm)" }}>
+                <ChevronLeft size={14} />
+              </button>
+              <p style={{ fontSize: 12, color: "var(--tx-3)", fontFamily: "var(--font-mono)", letterSpacing: "0.04em", margin: 0 }}>
+                {monthLabel}
+              </p>
+              <button onClick={() => shiftMonth(1)} style={{ display: "flex", alignItems: "center", padding: "2px 4px", background: "none", border: "none", cursor: "pointer", color: "var(--tx-3)", borderRadius: "var(--r-sm)" }}>
+                <ChevronRight size={14} />
+              </button>
+              {!isCurrentMonth && (
+                <button onClick={() => setSelectedMonth(todayMonth)} style={{ fontSize: 10, padding: "2px 8px", background: "var(--bg-3)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--tx-3)", fontFamily: "var(--font-mono)" }}>
+                  azi
+                </button>
+              )}
+            </div>
             <h1 className="page-title">Bună ziua</h1>
             <p style={{ fontSize: 13, color: "var(--tx-3)", marginTop: 6 }}>Iată situația activității tale.</p>
           </div>
@@ -186,7 +209,7 @@ export default function Dashboard() {
             Venituri vs Cheltuieli
           </div>
           <div style={{ fontSize: 11, color: "var(--tx-4)", marginBottom: 16 }}>
-            {now.getFullYear()} — lunar
+            {selectedYear} — lunar
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={monthlyData} barGap={2} barCategoryGap="20%">
@@ -219,7 +242,7 @@ export default function Dashboard() {
             Categorii cheltuieli
           </div>
           <div style={{ fontSize: 11, color: "var(--tx-4)", marginBottom: 12 }}>
-            {now.getFullYear()} — distribuire
+            {selectedYear} — distribuire
           </div>
           {categoryData.length > 0 ? (
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
