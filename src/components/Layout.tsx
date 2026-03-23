@@ -3,10 +3,11 @@ import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText,
   FileSignature, Receipt, Calculator, Settings,
-  BarChart3, FileCheck, Search,
+  BarChart3, FileCheck, Search, Bot
 } from "lucide-react";
 import { getSetting, isTauri } from "@/lib/db";
 import type { OperatingMode } from "@/types";
+import GeminiSidebar from "./GeminiSidebar";
 
 const nav = [
   { to: "/",           icon: LayoutDashboard, label: "Dashboard" },
@@ -27,6 +28,7 @@ const MODE_LABEL: Record<OperatingMode, string> = {
 
 export default function Layout() {
   const [mode, setMode] = useState<OperatingMode>("dda");
+  const [geminiOpen, setGeminiOpen] = useState(false);
 
   const refreshMode = () => {
     if (!isTauri()) return;
@@ -43,8 +45,19 @@ export default function Layout() {
       if (key === "operating_mode") refreshMode();
     };
 
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "g") {
+        e.preventDefault();
+        setGeminiOpen(v => !v);
+      }
+    };
+
     window.addEventListener("settings-changed", handler);
-    return () => window.removeEventListener("settings-changed", handler);
+    window.addEventListener("keydown", keyHandler);
+    return () => {
+      window.removeEventListener("settings-changed", handler);
+      window.removeEventListener("keydown", keyHandler);
+    };
   }, []);
 
   return (
@@ -94,6 +107,18 @@ export default function Layout() {
               <span className="sidebar-nav-label">{label}</span>
             </NavLink>
           ))}
+
+          <div className="sidebar-section-label" style={{ marginTop: 12 }}>Inteligență AI</div>
+          <button 
+            className={`sidebar-nav-item ${geminiOpen ? "active" : ""}`}
+            onClick={() => setGeminiOpen(!geminiOpen)}
+            data-tooltip="Asistent Gemini (Ctrl+G)"
+          >
+            <div style={{ minWidth: 36, display: "flex", justifyContent: "center" }}>
+              <Bot size={18} strokeWidth={1.75} />
+            </div>
+            <span className="sidebar-nav-label">Asistent Gemini</span>
+          </button>
         </nav>
 
         {/* Footer */}
@@ -101,6 +126,8 @@ export default function Layout() {
           <div className="sidebar-footer-text">v0.1.0</div>
         </div>
       </aside>
+
+      <GeminiSidebar open={geminiOpen} onClose={() => setGeminiOpen(false)} />
 
       {/* ── Content ── */}
       <main style={{ flex: 1, overflowY: "auto", background: "var(--bg-base)", display: "flex", flexDirection: "column" }}>
