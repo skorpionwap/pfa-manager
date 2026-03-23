@@ -41,7 +41,7 @@ export default function GlobalSearch() {
       );
       const invoices = await db.select<{ id: number; number: string; total: number; status: string }[]>(
         "SELECT id, number, total, status FROM invoices WHERE number LIKE ? LIMIT 5",
-        [like, like],
+        [like],
       );
       const contracts = await db.select<{ id: number; description: string; client_name: string }[]>(
         `SELECT c.id, c.description, cl.name as client_name

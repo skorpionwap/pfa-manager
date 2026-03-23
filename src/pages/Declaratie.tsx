@@ -131,6 +131,12 @@ export default function Declaratie() {
     })();
   }, [an]);
 
+  useEffect(() => {
+    if (!showPrint) return;
+    window.print();
+    setShowPrint(false);
+  }, [showPrint]);
+
   if (loading || !data) return <div style={{ padding: 40, color: "var(--tx-3)" }}>Se încarcă...</div>;
 
   const c = calculeaza(data.totalVenituri, data.totalCheltuieli, an, mode, pfaMode, normaValue, areSalariu, casBifat, overrides);
@@ -142,7 +148,7 @@ export default function Declaratie() {
   const explanations = EXPLANATIONS[explKey] || [];
 
   const sections = Array.from(new Set(rubrics.map(r => r.section)));
-  const handlePrint = () => { setShowPrint(true); setTimeout(() => window.print(), 200); };
+  const handlePrint = () => setShowPrint(true);
 
   return (
     <div style={{ padding: "36px 40px", maxWidth: 900 }}>

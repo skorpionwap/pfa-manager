@@ -48,10 +48,13 @@ export default function Raport() {
   const c = data ? calculeaza(data.totalVenituri, data.totalCheltuieli, an, mode, pfaMode, normaValue, areSalariu, casBifat, overrides) : null;
   const fmt = (n: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 2 });
 
-  const handlePrint = () => {
-    setShowPrint(true);
-    setTimeout(() => window.print(), 200);
-  };
+  useEffect(() => {
+    if (!showPrint) return;
+    window.print();
+    setShowPrint(false);
+  }, [showPrint]);
+
+  const handlePrint = () => setShowPrint(true);
 
   if (loading || !data || !c) return <div style={{ padding: 40, color: "var(--tx-3)" }}>Se încarcă...</div>;
 

@@ -143,8 +143,11 @@ export default function Contracte() {
   };
 
   const save = async () => {
-    const db = await getDb();
+    if (!form.date) { toast("Data contractului este obligatorie", "error"); return; }
     const description = editor?.getHTML() ?? form.description;
+    const isEmpty = !description || description === "<p></p>" || description.trim() === "";
+    if (!editing && isEmpty) { toast("Conținutul contractului nu poate fi gol", "error"); return; }
+    const db = await getDb();
     if (editing) {
       await db.execute(
         "UPDATE contracts SET client_id=?,type=?,number=?,date=?,description=?,amount=?,status=?,notes=? WHERE id=?",

@@ -59,8 +59,20 @@ export default function Clienti() {
   };
 
   const remove = async (id: number) => {
-    if (!confirm("Ștergi clientul?")) return;
     const db = await getDb();
+    const [{ inv }] = await db.select<[{ inv: number }]>(
+      "SELECT COUNT(*) as inv FROM invoices WHERE client_id=?", [id]
+    );
+    const [{ ctr }] = await db.select<[{ ctr: number }]>(
+      "SELECT COUNT(*) as ctr FROM contracts WHERE client_id=?", [id]
+    );
+    const deps: string[] = [];
+    if (inv > 0) deps.push(`${inv} factur${inv === 1 ? "ă" : "i"}`);
+    if (ctr > 0) deps.push(`${ctr} contract${ctr === 1 ? "" : "e"}`);
+    const warning = deps.length
+      ? `\n\nATENȚIE: clientul are ${deps.join(" și ")} asociate care vor rămâne fără client!`
+      : "";
+    if (!confirm(`Ștergi clientul?${warning}`)) return;
     await db.execute("DELETE FROM clients WHERE id=?", [id]);
     load();
     toast("Client șters", "info");

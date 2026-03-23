@@ -16,6 +16,9 @@ export async function getDb(): Promise<Database> {
 }
 
 async function initSchema(db: Database) {
+  // Enable FK enforcement — SQLite has it OFF by default
+  await db.execute("PRAGMA foreign_keys = ON");
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS clients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,11 +133,15 @@ export function parseFiscalOverrides(raw: Record<string, string>, an: number): {
   return o;
 }
 
-export async function nextInvoiceNumber(): Promise<string> {
-  await getDb();
+/** Citește următorul număr de factură fără să incrementeze contorul. */
+export async function peekInvoiceNumber(): Promise<string> {
   const series = (await getSetting("invoice_series")) || "FA";
   const counter = parseInt((await getSetting("invoice_counter")) || "1", 10);
-  const number = `${series}-${String(counter).padStart(4, "0")}`;
+  return `${series}-${String(counter).padStart(4, "0")}`;
+}
+
+/** Incrementează contorul — apelat DOAR după INSERT reușit. */
+export async function bumpInvoiceCounter(): Promise<void> {
+  const counter = parseInt((await getSetting("invoice_counter")) || "1", 10);
   await setSetting("invoice_counter", String(counter + 1));
-  return number;
 }

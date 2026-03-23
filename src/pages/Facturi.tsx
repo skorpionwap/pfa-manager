@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye } from "lucide-react";
-import { getDb, nextInvoiceNumber, getSetting } from "@/lib/db";
+import { getDb, peekInvoiceNumber, bumpInvoiceCounter } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import type { Client, Invoice, InvoiceItem, OperatingMode } from "@/types";
 
@@ -45,6 +45,7 @@ export default function Facturi() {
     my_bank: "", my_iban: "", invoice_series: "FA",
   });
   const [operatingMode, setOperatingMode] = useState<OperatingMode>("dda");
+  const [showPrint, setShowPrint] = useState(false);
 
   // Form state
   const [clientId, setClientId] = useState<number | "">("");
@@ -56,6 +57,13 @@ export default function Facturi() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Trigger print only after print-frame is in the DOM
+  useEffect(() => {
+    if (!showPrint) return;
+    window.print();
+    setShowPrint(false);
+  }, [showPrint]);
+
   const load = async () => {
     const db = await getDb();
     const rows = await db.select<(Invoice & { client_name: string; client_cif: string; client_address: string; client_email: string })[]>(`
@@ -66,16 +74,17 @@ export default function Facturi() {
     setInvoices(rows.map(r => ({ ...r, items: JSON.parse(r.items as unknown as string || "[]") })));
     setClients(await db.select<Client[]>("SELECT * FROM clients ORDER BY name ASC"));
 
-    // Load settings
-    const keys = ["my_name", "my_cif", "my_address", "my_email", "my_phone", "my_bank", "my_iban", "invoice_series"];
-    const vals: MySettings = { ...settings };
-    for (const k of keys) {
-      const rows = await db.select<{ value: string }[]>("SELECT value FROM settings WHERE key=?", [k]);
-      (vals as unknown as Record<string, string>)[k] = rows[0]?.value ?? "";
-    }
-    setSettings(vals);
-    const om = (await getSetting("operating_mode")) as OperatingMode || "dda";
-    setOperatingMode(om);
+    // Load settings — single query instead of N+1
+    const settingRows = await db.select<{ key: string; value: string }[]>("SELECT key, value FROM settings");
+    const sm: Record<string, string> = {};
+    settingRows.forEach(r => (sm[r.key] = r.value));
+    setSettings({
+      my_name: sm.my_name ?? "", my_cif: sm.my_cif ?? "", my_address: sm.my_address ?? "",
+      my_email: sm.my_email ?? "", my_phone: sm.my_phone ?? "",
+      my_bank: sm.my_bank ?? "", my_iban: sm.my_iban ?? "",
+      invoice_series: sm.invoice_series ?? "FA",
+    });
+    setOperatingMode((sm.operating_mode as OperatingMode) || "dda");
   };
 
   useEffect(() => { load(); }, []);
@@ -108,17 +117,19 @@ export default function Facturi() {
   const save = async () => {
     if (!clientId) return;
     const db = await getDb();
-    const number = editing?.number ?? await nextInvoiceNumber();
     if (editing) {
       await db.execute(
         "UPDATE invoices SET client_id=?,date=?,due_date=?,items=?,total=?,status=?,notes=? WHERE id=?",
         [clientId, date, dueDate, JSON.stringify(items), total, status, notes, editing.id]
       );
     } else {
+      // Peek number first — only bump counter after INSERT succeeds
+      const number = await peekInvoiceNumber();
       await db.execute(
         "INSERT INTO invoices(number,client_id,date,due_date,items,total,status,notes) VALUES(?,?,?,?,?,?,?,?)",
         [number, clientId, date, dueDate, JSON.stringify(items), total, status, notes]
       );
+      await bumpInvoiceCounter();
     }
     setShowForm(false);
     load();
@@ -140,9 +151,7 @@ export default function Facturi() {
     toast(`Status actualizat: ${STATUS_LABELS[s]}`, "info");
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => setShowPrint(true);
 
   const getClient = (inv: Invoice) => clients.find(c => c.id === inv.client_id);
 

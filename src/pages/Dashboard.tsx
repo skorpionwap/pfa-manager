@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   TrendingUp, Users, FileText, AlertCircle,
   Receipt, ArrowUpRight, Calculator, Info,
@@ -9,7 +10,7 @@ import {
 } from "recharts";
 import { getDb, getSetting, getFiscalOverrides, parseFiscalOverrides } from "@/lib/db";
 import { fetchAnnualData, type MonthlyData, type CategoryExpense } from "@/lib/raport";
-import { calculeaza, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
+import { calculeaza, type An, type CalculeResult, type FiscalOverrides } from "@/lib/fiscal";
 import { getCategoryLabel } from "@/lib/constants";
 import type { OperatingMode, PfaMode } from "@/types";
 
@@ -40,6 +41,7 @@ export default function Dashboard() {
   const [overrides, setOverrides] = useState<FiscalOverrides>({});
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryExpense[]>([]);
+  const [fiscalYear, setFiscalYear] = useState<An>(2026);
 
   useEffect(() => {
     (async () => {
@@ -54,6 +56,9 @@ export default function Dashboard() {
       setMode(m); setPfaMode(pm); setNormaValue(nv);
 
       const currentYear = now.getFullYear();
+      // Clamp to known fiscal years; extend FISCAL object when adding new years
+      const clampedYear = (currentYear in { 2025: 1, 2026: 1 } ? currentYear : 2026) as An;
+      setFiscalYear(clampedYear);
       const raw = await getFiscalOverrides(currentYear);
       setOverrides(parseFiscalOverrides(raw, currentYear));
 
@@ -105,7 +110,7 @@ export default function Dashboard() {
   const fmt = (n: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 2 });
   const fmtShort = (n: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 0 });
 
-  const calc = calculeaza(stats.revenueThisYear, stats.expensesThisYear, 2026 as any, mode, pfaMode, normaValue, false, false, overrides);
+  const calc = calculeaza(stats.revenueThisYear, stats.expensesThisYear, fiscalYear, mode, pfaMode, normaValue, false, false, overrides);
 
   const now = new Date();
   const monthLabel = now.toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
@@ -331,12 +336,12 @@ export default function Dashboard() {
 
       {/* ── Link to Fiscal page ── */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-        <a href="/fiscal" style={{
+        <Link to="/fiscal" style={{
           display: "flex", alignItems: "center", gap: 6,
           fontSize: 12, color: "var(--ac)", textDecoration: "none", fontWeight: 600,
         }}>
           Calculator fiscal detaliat <ArrowUpRight size={12} />
-        </a>
+        </Link>
       </div>
     </div>
   );

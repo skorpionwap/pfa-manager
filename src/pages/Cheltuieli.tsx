@@ -20,7 +20,7 @@ export default function Cheltuieli() {
   const [expenses, setExpenses]     = useState<Expense[]>([]);
   const [search, setSearch]         = useState("");
   const [filterCat, setFilterCat]   = useState("");
-  const [filterMonth, setFilterMonth] = useState(currentMonth());
+  const [filterMonth, setFilterMonth] = useState("");
   const [showForm, setShowForm]     = useState(false);
   const [editing, setEditing]       = useState<Expense | null>(null);
   const [form, setForm]             = useState(emptyForm());

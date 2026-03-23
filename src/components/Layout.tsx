@@ -55,11 +55,11 @@ export default function Layout() {
         {/* Logo */}
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="1" width="5" height="5" rx="1" fill="var(--ac)" opacity="0.8" />
-              <rect x="8" y="1" width="5" height="5" rx="1" fill="var(--ac)" opacity="0.4" />
-              <rect x="1" y="8" width="5" height="5" rx="1" fill="var(--ac)" opacity="0.4" />
-              <rect x="8" y="8" width="5" height="5" rx="1" fill="var(--ac)" opacity="0.8" />
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <rect x="1" y="1" width="6" height="6" rx="1.5" fill="var(--ac)" />
+              <rect x="8" y="1" width="6" height="6" rx="1.5" fill="var(--ac)" opacity="0.35" />
+              <rect x="1" y="8" width="6" height="6" rx="1.5" fill="var(--ac)" opacity="0.35" />
+              <rect x="8" y="8" width="6" height="6" rx="1.5" fill="var(--ac)" opacity="0.7" />
             </svg>
           </div>
           <span className="sidebar-logo-text">PFA Manager</span>

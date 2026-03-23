@@ -7,103 +7,58 @@ export interface Theme {
 }
 
 export const THEMES: Theme[] = [
-  // ── Dark ──────────────────────────────────────────────────────────
+  // ── Ubuntu Dark (Yaru Dark) ───────────────────────────────────────
 
   {
-    id: "dark",
-    name: "Dark",
-    description: "Alb-negru, contrast maxim",
-    preview: { bg: "#0a0a0a", ac: "#e5e5e5", border: "#262626", text: "#fafafa" },
+    id: "ubuntu-dark",
+    name: "Ubuntu Dark",
+    description: "Cărbune cald, portocaliu Ubuntu",
+    preview: { bg: "#1c1917", ac: "#e95420", border: "#3d3836", text: "#f2efec" },
     vars: {
-      "--bg-base": "#0a0a0a", "--bg-1": "#111111", "--bg-2": "#1a1a1a",
-      "--bg-3": "#222222", "--bg-hover": "#2a2a2a",
-      "--border": "#262626", "--border-md": "#404040", "--border-hi": "#525252",
-      "--border-light": "#262626",
-      "--tx-1": "#fafafa", "--tx-2": "#a3a3a3", "--tx-3": "#737373", "--tx-4": "#404040",
-      "--ac": "#e5e5e5", "--ac-hover": "#ffffff",
-      "--ac-dim": "rgba(229,229,229,0.08)", "--ac-glow": "rgba(229,229,229,0.15)",
-      "--btn-text": "#0a0a0a",
-      "--green": "#4ade80", "--green-dim": "rgba(74,222,128,0.1)",
-      "--red": "#f87171", "--red-dim": "rgba(248,113,113,0.1)",
-      "--blue": "#60a5fa", "--blue-dim": "rgba(96,165,250,0.1)",
-      "--amber": "#fbbf24", "--amber-dim": "rgba(251,191,36,0.1)",
-    },
-  },
-
-  // ── Dark Colorat (Navy + Cyan) ────────────────────────────────────
-
-  {
-    id: "navy",
-    name: "Navy",
-    description: "Navy profund cu accent cyan",
-    preview: { bg: "#0a192f", ac: "#00b4d8", border: "#1a3050", text: "#e0f0ff" },
-    vars: {
-      "--bg-base": "radial-gradient(ellipse at 50% 0%, #0f2744 0%, #0a192f 50%, #060e1a 100%)",
-      "--bg-1": "#0d1f38",
-      "--bg-2": "#132d4a",
-      "--bg-3": "#1a3a5c",
-      "--bg-hover": "#1e3f60",
-      "--border": "#1a3050", "--border-md": "#264060", "--border-hi": "#2d5070",
-      "--border-light": "#152a44",
-      "--tx-1": "#e0f0ff", "--tx-2": "#7eb8e0", "--tx-3": "#4a8ab5", "--tx-4": "#2a5575",
-      "--ac": "#00b4d8", "--ac-hover": "#48cae4",
-      "--ac-dim": "rgba(0,180,216,0.12)", "--ac-glow": "rgba(0,180,216,0.25)",
-      "--btn-text": "#0a192f",
-      "--green": "#2dd4a8", "--green-dim": "rgba(45,212,168,0.12)",
+      "--bg-base": "#1c1917",
+      "--bg-1": "#232120",
+      "--bg-2": "#2d2a28",
+      "--bg-3": "#383330",
+      "--bg-hover": "#433e3a",
+      "--border": "#3d3836", "--border-md": "#504845", "--border-hi": "#605552",
+      "--border-light": "#252220",
+      "--tx-1": "#f2efec", "--tx-2": "#b8b2ac", "--tx-3": "#7a7470", "--tx-4": "#4a4540",
+      "--ac": "#e95420", "--ac-hover": "#f47046",
+      "--ac-dim": "rgba(233,84,32,0.12)", "--ac-glow": "rgba(233,84,32,0.25)",
+      "--btn-text": "#ffffff",
+      "--green": "#4ade80", "--green-dim": "rgba(74,222,128,0.12)",
       "--red": "#f87171", "--red-dim": "rgba(248,113,113,0.12)",
       "--blue": "#60a5fa", "--blue-dim": "rgba(96,165,250,0.12)",
       "--amber": "#fbbf24", "--amber-dim": "rgba(251,191,36,0.12)",
     },
   },
 
-  // ── Light ─────────────────────────────────────────────────────────
+  // ── Ubuntu Light (Yaru Light) ─────────────────────────────────────
 
   {
-    id: "light",
-    name: "Light",
-    description: "Alb-negru, curat și simplu",
-    preview: { bg: "#ffffff", ac: "#171717", border: "#e5e5e5", text: "#171717" },
+    id: "ubuntu-light",
+    name: "Ubuntu Light",
+    description: "Piatră caldă, portocaliu Ubuntu",
+    preview: { bg: "#f5f3f0", ac: "#e95420", border: "#bdb6b0", text: "#1a1614" },
     vars: {
-      "--bg-base": "#ffffff", "--bg-1": "#f9fafb", "--bg-2": "#f3f4f6",
-      "--bg-3": "#e5e7eb", "--bg-hover": "#e5e7eb",
-      "--border": "#e5e5e5", "--border-md": "#d4d4d4", "--border-hi": "#a3a3a3",
-      "--border-light": "#f0f0f0",
-      "--tx-1": "#171717", "--tx-2": "#525252", "--tx-3": "#737373", "--tx-4": "#a3a3a3",
-      "--ac": "#171717", "--ac-hover": "#000000",
-      "--ac-dim": "rgba(0,0,0,0.06)", "--ac-glow": "rgba(0,0,0,0.12)",
+      "--bg-base": "linear-gradient(150deg, #f8f5f2 0%, #f2ede8 50%, #f5f1ed 100%)",
+      "--bg-1": "#ede8e3",
+      "--bg-2": "#e2ddd8",
+      "--bg-3": "#d4cec9",
+      "--bg-hover": "#c9c3bd",
+      "--border": "#bdb6b0", "--border-md": "#a8a09a", "--border-hi": "#908880",
+      "--border-light": "#eae5e0",
+      "--tx-1": "#1a1614", "--tx-2": "#4a4540", "--tx-3": "#6e6860", "--tx-4": "#9e9890",
+      "--ac": "#e95420", "--ac-hover": "#c44418",
+      "--ac-dim": "rgba(233,84,32,0.10)", "--ac-glow": "rgba(233,84,32,0.20)",
       "--btn-text": "#ffffff",
-      "--green": "#16a34a", "--green-dim": "rgba(22,163,74,0.08)",
+      "--green": "#15803d", "--green-dim": "rgba(21,128,61,0.10)",
       "--red": "#dc2626", "--red-dim": "rgba(220,38,38,0.08)",
-      "--blue": "#2563eb", "--blue-dim": "rgba(37,99,235,0.08)",
-      "--amber": "#d97706", "--amber-dim": "rgba(217,119,6,0.08)",
+      "--blue": "#1d4ed8", "--blue-dim": "rgba(29,78,216,0.08)",
+      "--amber": "#b45309", "--amber-dim": "rgba(180,83,9,0.09)",
     },
   },
 
-  // ── Light Colorat (Blue Gradient) ─────────────────────────────────
-
-  {
-    id: "ocean",
-    name: "Ocean",
-    description: "Light cu note de albastru",
-    preview: { bg: "#eef4ff", ac: "#2563eb", border: "#c7d8f0", text: "#0f172a" },
-    vars: {
-      "--bg-base": "linear-gradient(160deg, #f5f8ff 0%, #e8f0fe 35%, #f0f4ff 65%, #eaf0ff 100%)",
-      "--bg-1": "#f0f5ff",
-      "--bg-2": "#e0eaff",
-      "--bg-3": "#d0dfff",
-      "--bg-hover": "#d5e2f8",
-      "--border": "#c7d8f0", "--border-md": "#b0c8e8", "--border-hi": "#8aaddd",
-      "--border-light": "#e8f0ff",
-      "--tx-1": "#0f172a", "--tx-2": "#3b5578", "--tx-3": "#5a7aaa", "--tx-4": "#8aa8d0",
-      "--ac": "#2563eb", "--ac-hover": "#1d4ed8",
-      "--ac-dim": "rgba(37,99,235,0.08)", "--ac-glow": "rgba(37,99,235,0.18)",
-      "--btn-text": "#ffffff",
-      "--green": "#16a34a", "--green-dim": "rgba(22,163,74,0.08)",
-      "--red": "#dc2626", "--red-dim": "rgba(220,38,38,0.08)",
-      "--blue": "#2563eb", "--blue-dim": "rgba(37,99,235,0.1)",
-      "--amber": "#d97706", "--amber-dim": "rgba(217,119,6,0.08)",
-    },
-  },
 ];
 
 export function getThemeById(id: string): Theme {
