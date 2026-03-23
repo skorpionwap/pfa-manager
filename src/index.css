@@ -354,7 +354,7 @@ select.field option {
   min-width: 60px;
   display: flex;
   flex-direction: column;
-  background: var(--bg-1);
+  background: var(--sidebar-bg, var(--bg-1));
   border-right: 1px solid var(--border);
   box-shadow: 2px 0 16px rgba(0,0,0,0.25);
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -667,3 +667,44 @@ select.field option {
 .print-declaratie .pd-rubric-id { width: 50px; font-weight: 700; font-size: 10px; color: #333; font-family: 'Ubuntu Mono', monospace; }
 .print-declaratie .pd-rubric-label { flex: 1; font-size: 11px; }
 .print-declaratie .pd-rubric-value { width: 160px; text-align: right; font-family: 'Ubuntu Mono', monospace; font-weight: 700; font-size: 13px; border-bottom: 1px solid #999; padding-bottom: 2px; }
+
+/* ── Theme: Ubuntu Dark "Studio Charcoal" ────────────────────────── */
+[data-theme="ubuntu-dark"] .card {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 6px 24px rgba(0,0,0,0.22);
+}
+[data-theme="ubuntu-dark"] .modal {
+  box-shadow: 0 32px 96px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+}
+[data-theme="ubuntu-dark"] .sidebar {
+  box-shadow: 3px 0 20px rgba(0,0,0,0.4);
+}
+
+/* ── Theme: Ubuntu Light "Parchment" ─────────────────────────────── */
+[data-theme="ubuntu-light"] .card {
+  background: #f4ede5;
+  box-shadow: 0 1px 3px rgba(100,70,40,0.08), 0 4px 16px rgba(100,70,40,0.07);
+}
+[data-theme="ubuntu-light"] .modal {
+  background: #f4ede5;
+  box-shadow: 0 24px 80px rgba(80,50,20,0.22), 0 0 0 1px rgba(180,130,90,0.12);
+}
+[data-theme="ubuntu-light"] .modal-overlay {
+  background: rgba(40,25,10,0.45);
+}
+[data-theme="ubuntu-light"] .toast {
+  background: #f4ede5;
+  box-shadow: 0 8px 32px rgba(80,50,20,0.18);
+}
+[data-theme="ubuntu-light"] .sidebar {
+  box-shadow: 3px 0 16px rgba(100,70,40,0.1);
+}
+[data-theme="ubuntu-light"] .search-modal {
+  background: #f4ede5;
+  box-shadow: 0 24px 80px rgba(80,50,20,0.22);
+}
+[data-theme="ubuntu-light"] .btn-ghost {
+  border-color: var(--border-md);
+}
+[data-theme="ubuntu-light"] select.field {
+  background-color: var(--bg-1);
+}

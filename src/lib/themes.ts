@@ -7,24 +7,26 @@ export interface Theme {
 }
 
 export const THEMES: Theme[] = [
-  // ── Ubuntu Dark (Yaru Dark) ───────────────────────────────────────
+  // ── Ubuntu Dark "Studio Charcoal" ────────────────────────────────
+  // Warm brown-black base, sidebar distinctly darker, cream typography
 
   {
     id: "ubuntu-dark",
     name: "Ubuntu Dark",
     description: "Cărbune cald, portocaliu Ubuntu",
-    preview: { bg: "#1c1917", ac: "#e95420", border: "#3d3836", text: "#f2efec" },
+    preview: { bg: "#1a1815", ac: "#e95420", border: "#3a3330", text: "#f7f3ec" },
     vars: {
-      "--bg-base": "#1c1917",
-      "--bg-1": "#232120",
-      "--bg-2": "#2d2a28",
-      "--bg-3": "#383330",
-      "--bg-hover": "#433e3a",
-      "--border": "#3d3836", "--border-md": "#504845", "--border-hi": "#605552",
-      "--border-light": "#252220",
-      "--tx-1": "#f2efec", "--tx-2": "#b8b2ac", "--tx-3": "#7a7470", "--tx-4": "#4a4540",
-      "--ac": "#e95420", "--ac-hover": "#f47046",
-      "--ac-dim": "rgba(233,84,32,0.12)", "--ac-glow": "rgba(233,84,32,0.25)",
+      "--sidebar-bg": "#0e0c0b",
+      "--bg-base": "#1a1815",
+      "--bg-1": "#201d1a",
+      "--bg-2": "#2a2622",
+      "--bg-3": "#352f2b",
+      "--bg-hover": "#403a35",
+      "--border": "#3a3330", "--border-md": "#4d4642", "--border-hi": "#5e5750",
+      "--border-light": "#242120",
+      "--tx-1": "#f7f3ec", "--tx-2": "#b8b0a8", "--tx-3": "#78706a", "--tx-4": "#4a4440",
+      "--ac": "#e95420", "--ac-hover": "#f26a38",
+      "--ac-dim": "rgba(233,84,32,0.13)", "--ac-glow": "rgba(233,84,32,0.28)",
       "--btn-text": "#ffffff",
       "--green": "#4ade80", "--green-dim": "rgba(74,222,128,0.12)",
       "--red": "#f87171", "--red-dim": "rgba(248,113,113,0.12)",
@@ -33,28 +35,30 @@ export const THEMES: Theme[] = [
     },
   },
 
-  // ── Ubuntu Light (Yaru Light) ─────────────────────────────────────
+  // ── Ubuntu Light "Parchment" ──────────────────────────────────────
+  // Warm cream base with gradient, sepia borders, tan sidebar
 
   {
     id: "ubuntu-light",
     name: "Ubuntu Light",
-    description: "Piatră caldă, portocaliu Ubuntu",
-    preview: { bg: "#f5f3f0", ac: "#e95420", border: "#bdb6b0", text: "#1a1614" },
+    description: "Pergament cald, portocaliu Ubuntu",
+    preview: { bg: "#f6f1ea", ac: "#e95420", border: "#c4bdb6", text: "#1c1814" },
     vars: {
-      "--bg-base": "linear-gradient(150deg, #f8f5f2 0%, #f2ede8 50%, #f5f1ed 100%)",
-      "--bg-1": "#ede8e3",
-      "--bg-2": "#e2ddd8",
-      "--bg-3": "#d4cec9",
-      "--bg-hover": "#c9c3bd",
-      "--border": "#bdb6b0", "--border-md": "#a8a09a", "--border-hi": "#908880",
-      "--border-light": "#eae5e0",
-      "--tx-1": "#1a1614", "--tx-2": "#4a4540", "--tx-3": "#6e6860", "--tx-4": "#9e9890",
-      "--ac": "#e95420", "--ac-hover": "#c44418",
-      "--ac-dim": "rgba(233,84,32,0.10)", "--ac-glow": "rgba(233,84,32,0.20)",
+      "--sidebar-bg": "#e5dfd8",
+      "--bg-base": "linear-gradient(160deg, #faf7f3 0%, #f4ede5 55%, #f7f2eb 100%)",
+      "--bg-1": "#f0ebe3",
+      "--bg-2": "#e9e2da",
+      "--bg-3": "#ddd6ce",
+      "--bg-hover": "#d4cdc5",
+      "--border": "#c4bdb6", "--border-md": "#b0a89f", "--border-hi": "#9a9089",
+      "--border-light": "#ede8e2",
+      "--tx-1": "#1c1814", "--tx-2": "#4a4038", "--tx-3": "#6e6258", "--tx-4": "#9e9288",
+      "--ac": "#e95420", "--ac-hover": "#c24418",
+      "--ac-dim": "rgba(233,84,32,0.10)", "--ac-glow": "rgba(233,84,32,0.22)",
       "--btn-text": "#ffffff",
-      "--green": "#15803d", "--green-dim": "rgba(21,128,61,0.10)",
+      "--green": "#16803d", "--green-dim": "rgba(22,128,61,0.10)",
       "--red": "#dc2626", "--red-dim": "rgba(220,38,38,0.08)",
-      "--blue": "#1d4ed8", "--blue-dim": "rgba(29,78,216,0.08)",
+      "--blue": "#1d4ed8", "--blue-dim": "rgba(29,78,216,0.09)",
       "--amber": "#b45309", "--amber-dim": "rgba(180,83,9,0.09)",
     },
   },
@@ -70,4 +74,5 @@ export function applyTheme(theme: Theme) {
   Object.entries(theme.vars).forEach(([key, value]) => {
     root.style.setProperty(key, value);
   });
+  root.setAttribute("data-theme", theme.id);
 }
