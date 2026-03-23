@@ -7,26 +7,33 @@ export interface Theme {
 }
 
 export const THEMES: Theme[] = [
-  // ── Ubuntu Dark "Studio Charcoal" ────────────────────────────────
-  // Warm brown-black base, sidebar distinctly darker, cream typography
+  // ── Ubuntu Dark — Yaru (exact) ───────────────────────────────────
+  // $jet=#181818, bg = lighten(jet, 8%) = #2c2c2c, orange #E95420
+  // Source: ubuntu/yaru gtk/src/default/gtk-3.0/_colors.scss + _palette.scss
 
   {
     id: "ubuntu-dark",
     name: "Ubuntu Dark",
-    description: "Cărbune cald, portocaliu Ubuntu",
-    preview: { bg: "#1a1815", ac: "#e95420", border: "#3a3330", text: "#f7f3ec" },
+    description: "Yaru dark — gri neutru, portocaliu Ubuntu",
+    preview: { bg: "#2c2c2c", ac: "#e95420", border: "#1a1a1a", text: "#f7f7f7" },
     vars: {
-      "--sidebar-bg": "#0e0c0b",
-      "--bg-base": "#1a1815",
-      "--bg-1": "#201d1a",
-      "--bg-2": "#2a2622",
-      "--bg-3": "#352f2b",
-      "--bg-hover": "#403a35",
-      "--border": "#3a3330", "--border-md": "#4d4642", "--border-hi": "#5e5750",
-      "--border-light": "#242120",
-      "--tx-1": "#f7f3ec", "--tx-2": "#b8b0a8", "--tx-3": "#78706a", "--tx-4": "#4a4440",
-      "--ac": "#e95420", "--ac-hover": "#f26a38",
-      "--ac-dim": "rgba(233,84,32,0.13)", "--ac-glow": "rgba(233,84,32,0.28)",
+      "--sidebar-bg": "#181818",        // $jet — panel bg color
+      "--bg-base": "#2c2c2c",           // lighten($jet, 8%) — main window bg
+      "--bg-1": "#292929",              // lighten($jet, 7%)
+      "--bg-2": "#242424",              // lighten($jet, 6%) — $base_color dark
+      "--bg-3": "#1f1f1f",              // lighten($jet, 4%)
+      "--bg-hover": "#383838",          // lighten($jet, 12%)
+      "--border": "#1a1a1a",            // darken(bg, 8%) ≈ jet
+      "--border-md": "#404040",
+      "--border-hi": "#565656",
+      "--border-light": "#202020",
+      "--tx-1": "#f7f7f7",              // $porcelain
+      "--tx-2": "#c0bfbc",
+      "--tx-3": "#878787",              // $ash
+      "--tx-4": "#5d5d5d",              // $slate
+      "--ac": "#e95420",                // $orange — Ubuntu brand orange
+      "--ac-hover": "#f26a38",
+      "--ac-dim": "rgba(233,84,32,0.14)", "--ac-glow": "rgba(233,84,32,0.30)",
       "--btn-text": "#ffffff",
       "--green": "#4ade80", "--green-dim": "rgba(74,222,128,0.12)",
       "--red": "#f87171", "--red-dim": "rgba(248,113,113,0.12)",
@@ -35,25 +42,32 @@ export const THEMES: Theme[] = [
     },
   },
 
-  // ── Ubuntu Light "Parchment" ──────────────────────────────────────
-  // Warm cream base with gradient, sepia borders, tan sidebar
+  // ── Ubuntu Light — Yaru (exact) ──────────────────────────────────
+  // $light_bg_color=#FAFAFA, text=$inkstone=#3D3D3D, orange #E95420
+  // Source: ubuntu/yaru gtk/src/default/gtk-3.0/_colors.scss + _palette.scss
 
   {
     id: "ubuntu-light",
     name: "Ubuntu Light",
-    description: "Pergament cald, portocaliu Ubuntu",
-    preview: { bg: "#f6f1ea", ac: "#e95420", border: "#c4bdb6", text: "#1c1814" },
+    description: "Yaru light — alb cald, portocaliu Ubuntu",
+    preview: { bg: "#fafafa", ac: "#e95420", border: "#c8c8c8", text: "#3d3d3d" },
     vars: {
-      "--sidebar-bg": "#e5dfd8",
-      "--bg-base": "linear-gradient(160deg, #faf7f3 0%, #f4ede5 55%, #f7f2eb 100%)",
-      "--bg-1": "#f0ebe3",
-      "--bg-2": "#e9e2da",
-      "--bg-3": "#ddd6ce",
-      "--bg-hover": "#d4cdc5",
-      "--border": "#c4bdb6", "--border-md": "#b0a89f", "--border-hi": "#9a9089",
-      "--border-light": "#ede8e2",
-      "--tx-1": "#1c1814", "--tx-2": "#4a4038", "--tx-3": "#6e6258", "--tx-4": "#9e9288",
-      "--ac": "#e95420", "--ac-hover": "#c24418",
+      "--sidebar-bg": "#d5d0ce",        // mix(bg, base, 50%) darkened for sidebar
+      "--bg-base": "#fafafa",           // $light_bg_color
+      "--bg-1": "#f3f3f3",
+      "--bg-2": "#ebebeb",
+      "--bg-3": "#e0e0e0",
+      "--bg-hover": "#d6d6d6",
+      "--border": "#c8c8c8",            // darken(#fafafa, 20%)
+      "--border-md": "#b5b5b5",
+      "--border-hi": "#9e9e9e",
+      "--border-light": "#f0f0f0",
+      "--tx-1": "#3d3d3d",              // $inkstone
+      "--tx-2": "#5d5d5d",              // $slate
+      "--tx-3": "#878787",              // $ash
+      "--tx-4": "#aea79f",              // $warm_gray
+      "--ac": "#e95420",                // $orange
+      "--ac-hover": "#c24418",
       "--ac-dim": "rgba(233,84,32,0.10)", "--ac-glow": "rgba(233,84,32,0.22)",
       "--btn-text": "#ffffff",
       "--green": "#16803d", "--green-dim": "rgba(22,128,61,0.10)",
