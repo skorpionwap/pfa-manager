@@ -108,17 +108,7 @@ export default function Layout() {
             </NavLink>
           ))}
 
-          <div className="sidebar-section-label" style={{ marginTop: 12 }}>Inteligență AI</div>
-          <button 
-            className={`sidebar-nav-item ${geminiOpen ? "active" : ""}`}
-            onClick={() => setGeminiOpen(!geminiOpen)}
-            data-tooltip="Asistent Gemini (Ctrl+G)"
-          >
-            <div style={{ minWidth: 36, display: "flex", justifyContent: "center" }}>
-              <Bot size={18} strokeWidth={1.75} />
-            </div>
-            <span className="sidebar-nav-label">Asistent Gemini</span>
-          </button>
+          <div className="sidebar-section-label" style={{ marginTop: 12 }}>Secțiuni</div>
         </nav>
 
         {/* Footer */}
@@ -126,8 +116,6 @@ export default function Layout() {
           <div className="sidebar-footer-text">v0.1.0</div>
         </div>
       </aside>
-
-      <GeminiSidebar open={geminiOpen} onClose={() => setGeminiOpen(false)} />
 
       {/* ── Content ── */}
       <main style={{ flex: 1, overflowY: "auto", background: "var(--bg-base)", display: "flex", flexDirection: "column" }}>
@@ -146,11 +134,33 @@ export default function Layout() {
             background: "var(--bg-3)", border: "1px solid var(--border)",
             borderRadius: 4, padding: "1px 6px", color: "var(--tx-4)",
           }}>⌘K</kbd>
+          
+          <div style={{ width: 1, height: 16, background: "var(--border)", margin: "0 8px" }} />
+          
+          <button 
+            onClick={(e) => { e.stopPropagation(); setGeminiOpen(!geminiOpen); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "6px 14px", borderRadius: "var(--r-md)",
+              border: geminiOpen ? "1px solid var(--ac)" : "1px solid var(--border)",
+              background: geminiOpen ? "var(--ac-dim)" : "var(--bg-2)",
+              color: geminiOpen ? "var(--ac)" : "var(--tx-2)",
+              fontSize: 12, fontWeight: 600, transition: "all 0.15s"
+            }}
+          >
+            <Bot size={15} />
+            Asistent AI
+          </button>
         </div>
         <div style={{ flex: 1, overflowY: "auto" }}>
           <Outlet />
         </div>
       </main>
+
+      <GeminiSidebar 
+        open={geminiOpen} 
+        onClose={() => setGeminiOpen(false)} 
+      />
     </div>
   );
 }
