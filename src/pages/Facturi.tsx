@@ -46,9 +46,13 @@ export default function Facturi() {
   });
   const [operatingMode, setOperatingMode] = useState<OperatingMode>("dda");
   const [showPrint, setShowPrint] = useState(false);
+  const [contracts, setContracts] = useState<any[]>([]); // Added for contract linking
 
   // Form state
   const [clientId, setClientId] = useState<number | "">("");
+  const [contractId, setContractId] = useState<number | "">(""); // NEW
+  const [category, setCategory] = useState(""); // NEW
+  const [isSigned, setIsSigned] = useState(false); // NEW
   const [date, setDate]         = useState(today());
   const [dueDate, setDueDate]   = useState(addDays(today(), 30));
   const [items, setItems]       = useState<InvoiceItem[]>([emptyItem()]);
@@ -71,8 +75,9 @@ export default function Facturi() {
       FROM invoices i LEFT JOIN clients c ON c.id = i.client_id
       ORDER BY i.created_at DESC
     `);
-    setInvoices(rows.map(r => ({ ...r, items: JSON.parse(r.items as unknown as string || "[]") })));
+    setInvoices(rows.map(r => ({ ...r, items: JSON.parse(r.items as unknown as string || "[]"), is_signed: !!r.is_signed })));
     setClients(await db.select<Client[]>("SELECT * FROM clients ORDER BY name ASC"));
+    setContracts(await db.select<any[]>("SELECT * FROM contracts ORDER BY date DESC")); // Load contracts
 
     // Load settings — single query instead of N+1
     const settingRows = await db.select<{ key: string; value: string }[]>("SELECT key, value FROM settings");
@@ -91,14 +96,16 @@ export default function Facturi() {
 
   const openNew = async () => {
     setEditing(null);
-    setClientId(""); setDate(today()); setDueDate(addDays(today(), 30));
+    setClientId(""); setContractId(""); setCategory(operatingMode === "dda" ? "Tranșă DDA" : ""); setIsSigned(false);
+    setDate(today()); setDueDate(addDays(today(), 30));
     setItems([emptyItem()]); setNotes(""); setStatus("draft");
     setShowForm(true);
   };
 
   const openEdit = (inv: Invoice) => {
     setEditing(inv);
-    setClientId(inv.client_id); setDate(inv.date); setDueDate(inv.due_date);
+    setClientId(inv.client_id); setContractId(inv.contract_id || ""); setCategory(inv.category || ""); setIsSigned(!!inv.is_signed);
+    setDate(inv.date); setDueDate(inv.due_date);
     setItems(inv.items.length ? inv.items : [emptyItem()]); setNotes(inv.notes); setStatus(inv.status);
     setShowForm(true);
   };
@@ -119,21 +126,22 @@ export default function Facturi() {
     const db = await getDb();
     if (editing) {
       await db.execute(
-        "UPDATE invoices SET client_id=?,date=?,due_date=?,items=?,total=?,status=?,notes=? WHERE id=?",
-        [clientId, date, dueDate, JSON.stringify(items), total, status, notes, editing.id]
+        "UPDATE invoices SET client_id=?,contract_id=?,date=?,due_date=?,items=?,total=?,status=?,notes=?,category=?,is_signed=? WHERE id=?",
+        [clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0, editing.id]
       );
     } else {
       // Peek number first — only bump counter after INSERT succeeds
       const number = await peekInvoiceNumber();
       await db.execute(
-        "INSERT INTO invoices(number,client_id,date,due_date,items,total,status,notes) VALUES(?,?,?,?,?,?,?,?)",
-        [number, clientId, date, dueDate, JSON.stringify(items), total, status, notes]
+        "INSERT INTO invoices(number,client_id,contract_id,date,due_date,items,total,status,notes,category,is_signed) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        [number, clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0]
       );
       await bumpInvoiceCounter();
     }
     setShowForm(false);
     load();
-    toast(editing ? "Factura actualizată" : "Factura emisă", "success");
+    const modeName = operatingMode === "dda" ? "Venitul" : "Factura";
+    toast(editing ? `${modeName} actualizat` : `${modeName} emis`, "success");
   };
 
   const remove = async (id: number) => {
@@ -160,10 +168,14 @@ export default function Facturi() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 28 }}>
         <div>
-          <h1 className="page-title">Facturi</h1>
-          <p style={{ fontSize: 12, color: "var(--tx-3)", marginTop: 5 }}>{invoices.length} documente emise</p>
+          <h1 className="page-title">{operatingMode === "dda" ? "Venituri & Recepții" : "Facturi"}</h1>
+          <p style={{ fontSize: 12, color: "var(--tx-3)", marginTop: 5 }}>
+            {invoices.length} {operatingMode === "dda" ? "înregistrări" : "documente emise"}
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={openNew}><Plus size={14} strokeWidth={2.5} /> Factură nouă</button>
+        <button className="btn btn-primary" onClick={openNew}>
+          <Plus size={14} strokeWidth={2.5} /> {operatingMode === "dda" ? "Venit / PVR Nou" : "Factură nouă"}
+        </button>
       </div>
 
       {/* Table */}
@@ -171,22 +183,43 @@ export default function Facturi() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Număr</th><th>Client</th><th>Dată</th><th>Scadență</th>
-              <th style={{ textAlign: "right" }}>Total</th><th>Status</th><th style={{ width: 120 }}></th>
+              <th>{operatingMode === "dda" ? "Document / PVR" : "Număr"}</th>
+              <th>Client</th>
+              {operatingMode === "dda" && <th>Contract / Categorie</th>}
+              <th>Dată</th>
+              {operatingMode === "pfa" && <th>Scadență</th>}
+              <th style={{ textAlign: "right" }}>Total</th>
+              <th>Status</th>
+              <th style={{ width: 120 }}></th>
             </tr>
           </thead>
           <tbody>
             {invoices.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: "center", padding: "60px 0", color: "var(--tx-4)" }}>
+              <tr><td colSpan={operatingMode === "dda" ? 8 : 7} style={{ textAlign: "center", padding: "60px 0", color: "var(--tx-4)" }}>
                 <FileText size={32} style={{ margin: "0 auto 12px", display: "block", opacity: 0.3 }} />
-                Nicio factură emisă încă
+                Niciun {operatingMode === "dda" ? "venit înregistrat" : "document emis"} încă
               </td></tr>
             ) : invoices.map(inv => (
               <tr key={inv.id}>
-                <td><span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tx-1)", fontWeight: 500 }}>{inv.number}</span></td>
+                <td>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tx-1)", fontWeight: 500 }}>{inv.number}</span>
+                    {inv.is_signed && <span style={{ fontSize: 10, color: "var(--green)", fontWeight: 600 }}>✓ Semnat PVR</span>}
+                  </div>
+                </td>
                 <td style={{ color: "var(--tx-1)" }}>{getClient(inv)?.name || "—"}</td>
+                {operatingMode === "dda" && (
+                  <td>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontSize: 12, color: "var(--tx-2)" }}>{contracts.find(c => c.id === inv.contract_id)?.number || "Fără contract"}</span>
+                      {inv.category && <span className="badge badge-muted" style={{ fontSize: 10, alignSelf: "flex-start" }}>{inv.category}</span>}
+                    </div>
+                  </td>
+                )}
                 <td style={{ color: "var(--tx-3)", fontFamily: "var(--font-mono)", fontSize: 12 }}>{inv.date}</td>
-                <td style={{ color: inv.status === "overdue" ? "var(--red)" : "var(--tx-3)", fontFamily: "var(--font-mono)", fontSize: 12 }}>{inv.due_date}</td>
+                {operatingMode === "pfa" && (
+                  <td style={{ color: inv.status === "overdue" ? "var(--red)" : "var(--tx-3)", fontFamily: "var(--font-mono)", fontSize: 12 }}>{inv.due_date}</td>
+                )}
                 <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600, color: "var(--tx-1)" }}>
                   {inv.total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
                 </td>
@@ -229,9 +262,9 @@ export default function Facturi() {
             </div>
 
             <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16, maxHeight: "70vh", overflowY: "auto" }}>
-              {/* Client + dates */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                <div style={{ gridColumn: "span 3" }}>
+              {/* Client + Contract */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
                   <FieldLabel>Client *</FieldLabel>
                   <select className="field" value={clientId} onChange={e => setClientId(Number(e.target.value) || "")}>
                     <option value="">Selectează client...</option>
@@ -239,19 +272,53 @@ export default function Facturi() {
                   </select>
                 </div>
                 <div>
-                  <FieldLabel>Dată emitere</FieldLabel>
+                  <FieldLabel>Contract (Opțional)</FieldLabel>
+                  <select className="field" value={contractId} onChange={e => setContractId(Number(e.target.value) || "")}>
+                    <option value="">Selectează contract...</option>
+                    {contracts.filter(c => !clientId || c.client_id === clientId).map(c => (
+                      <option key={c.id} value={c.id}>{c.number} - {c.description.slice(0, 30)}...</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Dates + Category + Status */}
+              <div style={{ display: "grid", gridTemplateColumns: operatingMode === "dda" ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr", gap: 12 }}>
+                <div>
+                  <FieldLabel>{operatingMode === "dda" ? "Data PVR" : "Dată emitere"}</FieldLabel>
                   <input className="field" type="date" value={date} onChange={e => { setDate(e.target.value); setDueDate(addDays(e.target.value, 30)); }} />
                 </div>
-                <div>
-                  <FieldLabel>Scadență</FieldLabel>
-                  <input className="field" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-                </div>
+                {operatingMode === "pfa" && (
+                  <div>
+                    <FieldLabel>Scadență</FieldLabel>
+                    <input className="field" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                  </div>
+                )}
+                {operatingMode === "dda" && (
+                  <div>
+                    <FieldLabel>Categorie</FieldLabel>
+                    <select className="field" value={category} onChange={e => setCategory(e.target.value)}>
+                      <option value="Tranșă DDA">Tranșă DDA</option>
+                      <option value="Abonament DDA">Abonament DDA</option>
+                      <option value="Servicii punctuale">Servicii punctuale</option>
+                      <option value="Altele">Altele</option>
+                    </select>
+                  </div>
+                )}
                 <div>
                   <FieldLabel>Status</FieldLabel>
                   <select className="field" value={status} onChange={e => setStatus(e.target.value as Status)}>
                     {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
+                {operatingMode === "dda" && (
+                  <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 10 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, fontWeight: 500, color: "var(--tx-2)" }}>
+                      <input type="checkbox" checked={isSigned} onChange={e => setIsSigned(e.target.checked)} />
+                      Semnat PVR
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Line items */}
@@ -321,9 +388,9 @@ export default function Facturi() {
 
               {/* Notes */}
               <div>
-                <FieldLabel>Note / Mențiuni</FieldLabel>
+                <FieldLabel>{operatingMode === "dda" ? "Descriere livrabile / Note" : "Note / Mențiuni"}</FieldLabel>
                 <textarea className="field" rows={2} value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder="ex: Cesiune drepturi patrimoniale de autor cod sursă..."
+                  placeholder={operatingMode === "dda" ? "ex: Predare cod sursă conform milestone 2..." : "ex: Cesiune drepturi patrimoniale de autor cod sursă..."}
                   style={{ resize: "vertical", minHeight: 56 }} />
               </div>
             </div>
@@ -333,7 +400,7 @@ export default function Facturi() {
               <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Anulează</button>
               <button className="btn btn-primary" onClick={save} disabled={!clientId}>
                 <Check size={13} strokeWidth={2.5} />
-                {editing ? "Salvează" : "Emite factură"}
+                {editing ? "Salvează" : (operatingMode === "dda" ? "Înregistrează venit" : "Emite factură")}
               </button>
             </div>
           </div>
@@ -351,7 +418,7 @@ export default function Facturi() {
               </h3>
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="btn btn-primary" onClick={handlePrint}>
-                  <Printer size={13} strokeWidth={2.5} /> Printează
+                  <Printer size={13} strokeWidth={2.5} /> {operatingMode === "dda" ? "Printează PVR" : "Printează"}
                 </button>
                 <button onClick={() => setPreviewInvoice(null)} style={{ background: "var(--bg-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 6, color: "var(--tx-3)", display: "flex", cursor: "pointer" }}>
                   <X size={14} />
@@ -361,7 +428,11 @@ export default function Facturi() {
 
             {/* Tipizat content */}
             <div ref={printRef} className="print-frame" style={{ flex: 1, overflow: "auto", background: "#e8e8e8", padding: 24 }}>
-              <InvoiceTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} operatingMode={operatingMode} />
+              {operatingMode === "dda" ? (
+                <PVRTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} contract={contracts.find(c => c.id === previewInvoice.contract_id)} />
+              ) : (
+                <InvoiceTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} operatingMode={operatingMode} />
+              )}
             </div>
           </div>
         </div>
@@ -554,6 +625,105 @@ function InvoiceTipizat({ invoice, client, settings, operatingMode }: {
               <div>Banca: <strong>{settings.my_bank}</strong></div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PVR Tipizat (print-ready) ────────────────────────────────────────────────
+function PVRTipizat({ invoice, client, settings, contract }: {
+  invoice: Invoice; client?: Client; settings: MySettings; contract?: any;
+}) {
+  const total = invoice.items.reduce((s, it) => s + it.total, 0);
+
+  return (
+    <div className="tipizat" style={{
+      background: "#fff", padding: "60px", color: "#000",
+      minHeight: "1000px", display: "flex", flexDirection: "column",
+      boxShadow: "0 0 40px rgba(0,0,0,0.1)", borderRadius: "2px"
+    }}>
+      {/* ── Header ── */}
+      <div style={{ textAlign: "center", marginBottom: "40px" }}>
+        <h1 style={{ fontSize: "24px", fontWeight: "900", textTransform: "uppercase", margin: "0 0 10px" }}>
+          Proces-Verbal de Recepție a Serviciilor
+        </h1>
+        <div style={{ fontSize: "14px", color: "#666" }}>
+          Anexă la Contractul nr. {contract?.number || "—"} din data {contract?.date || "—"}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: "40px", fontSize: "14px", lineHeight: "1.6" }}>
+        <p>Încheiat astăzi, <strong>{invoice.date}</strong>, între:</p>
+        <p style={{ marginTop: "12px" }}>
+          <strong>FURNIZOARE:</strong> {settings.my_name}, CIF {settings.my_cif}, cu sediul în {settings.my_address}, în calitate de Autor/Prestator.
+        </p>
+        <p style={{ marginTop: "12px" }}>
+          <strong>BENEFICIAR:</strong> {client?.name}, CIF/CUI {client?.cif}, cu sediul în {client?.address}, în calitate de Beneficiar.
+        </p>
+      </div>
+
+      <div style={{ marginBottom: "20px", fontSize: "14px", borderBottom: "1px solid #000", paddingBottom: "8px", fontWeight: "800", textTransform: "uppercase" }}>
+        1. Obiectul Recepției
+      </div>
+      <div style={{ marginBottom: "40px", fontSize: "14px", lineHeight: "1.6" }}>
+        Furnizorul a predat, iar Beneficiarul a recepționat următoarele livrabile/servicii aferente etapei: <strong>{invoice.category || "General"}</strong>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}>
+          <thead>
+            <tr style={{ borderBottom: "2px solid #000" }}>
+              <th style={{ textAlign: "left", padding: "8px 0" }}>Descriere</th>
+              <th style={{ textAlign: "right", padding: "8px 0" }}>Valoare</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoice.items.map((item, i) => (
+              <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
+                <td style={{ padding: "12px 0" }}>{item.description}</td>
+                <td style={{ textAlign: "right", padding: "12px 0", fontFamily: "var(--font-mono)" }}>
+                  {item.total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td style={{ padding: "12px 0", fontWeight: "800" }}>TOTAL</td>
+              <td style={{ textAlign: "right", padding: "12px 0", fontWeight: "900", fontFamily: "var(--font-mono)" }}>
+                {total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div style={{ marginBottom: "20px", fontSize: "14px", borderBottom: "1px solid #000", paddingBottom: "8px", fontWeight: "800", textTransform: "uppercase" }}>
+        2. Constatări
+      </div>
+      <div style={{ marginBottom: "40px", fontSize: "14px", lineHeight: "1.6" }}>
+        <p>Beneficiarul confirmă că serviciile menționate mai sus au fost prestate în totalitate, conform cerințelor stabilite în contract, fiind în stare corespunzătoare de utilizare.</p>
+        <p style={{ marginTop: "12px" }}>Prin semnarea prezentului document, Beneficiarul acceptă livrabilele și se obligă la plata sumei de <strong>{total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON</strong> conform termenelor contractuale.</p>
+      </div>
+
+      {invoice.notes && (
+        <>
+          <div style={{ marginBottom: "20px", fontSize: "14px", borderBottom: "1px solid #000", paddingBottom: "8px", fontWeight: "800", textTransform: "uppercase" }}>
+            3. Mențiuni Adiționale
+          </div>
+          <p style={{ marginBottom: "40px", fontSize: "14px", lineHeight: "1.6" }}>{invoice.notes}</p>
+        </>
+      )}
+
+      {/* ── Signatures ── */}
+      <div style={{ marginTop: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "100px", padding: "60px 0" }}>
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: "800", textTransform: "uppercase", color: "#999", marginBottom: "40px" }}>Am predat (Furnizor)</div>
+          <div style={{ borderBottom: "1px solid #000", height: "40px" }}></div>
+          <div style={{ fontSize: "13px", marginTop: "8px", fontWeight: "700" }}>{settings.my_name}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: "800", textTransform: "uppercase", color: "#999", marginBottom: "40px" }}>Am recepționat (Beneficiar)</div>
+          <div style={{ borderBottom: "1px solid #000", height: "40px" }}></div>
+          <div style={{ fontSize: "13px", marginTop: "8px", fontWeight: "700" }}>{client?.name}</div>
         </div>
       </div>
     </div>

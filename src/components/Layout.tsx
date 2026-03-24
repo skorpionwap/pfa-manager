@@ -12,7 +12,7 @@ import GeminiSidebar from "./GeminiSidebar";
 const nav = [
   { to: "/",           icon: LayoutDashboard, label: "Dashboard" },
   { to: "/clienti",   icon: Users,            label: "Clienți"   },
-  { to: "/facturi",   icon: FileText,         label: "Facturi"   },
+  { to: "/facturi",   icon: FileText,         label: "Facturi", ddaLabel: "Venituri" },
   { to: "/contracte", icon: FileSignature,    label: "Contracte" },
   { to: "/cheltuieli", icon: Receipt,          label: "Cheltuieli" },
   { to: "/fiscal",    icon: Calculator,       label: "Fiscal"    },
@@ -93,20 +93,24 @@ export default function Layout() {
         {/* Nav */}
         <nav className="sidebar-nav">
           <div className="sidebar-section-label">Meniu</div>
-          {nav.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) => `sidebar-nav-item ${isActive ? "active" : ""}`}
-              data-tooltip={label}
-            >
-              <div style={{ minWidth: 36, display: "flex", justifyContent: "center" }}>
-                <Icon size={18} strokeWidth={1.75} />
-              </div>
-              <span className="sidebar-nav-label">{label}</span>
-            </NavLink>
-          ))}
+          {nav.map((item) => {
+            const Icon = item.icon;
+            const label = (mode === "dda" && item.ddaLabel) ? item.ddaLabel : item.label;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) => `sidebar-nav-item ${isActive ? "active" : ""}`}
+                data-tooltip={label}
+              >
+                <div style={{ minWidth: 36, display: "flex", justifyContent: "center" }}>
+                  <Icon size={18} strokeWidth={1.75} />
+                </div>
+                <span className="sidebar-nav-label">{label}</span>
+              </NavLink>
+            );
+          })}
 
           <div className="sidebar-section-label" style={{ marginTop: 12 }}>Secțiuni</div>
         </nav>

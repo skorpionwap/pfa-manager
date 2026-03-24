@@ -20,12 +20,15 @@ export interface Invoice {
   id: number;
   number: string;
   client_id: number;
+  contract_id?: number | null; // Added for DDA linking
   client_name?: string;
   date: string;
   due_date: string;
   items: InvoiceItem[];
   total: number;
   status: "draft" | "sent" | "paid" | "overdue";
+  category?: string; // Added for DDA: Tranșă, Abonament, etc.
+  is_signed?: boolean; // Added for DDA: PVR signature status
   notes: string;
   created_at: string;
 }

@@ -37,16 +37,25 @@ async function initSchema(db: Database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       number TEXT NOT NULL UNIQUE,
       client_id INTEGER NOT NULL,
+      contract_id INTEGER,
       date TEXT NOT NULL,
       due_date TEXT NOT NULL,
       items TEXT NOT NULL DEFAULT '[]',
       total REAL NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'draft',
+      category TEXT DEFAULT '',
+      is_signed INTEGER DEFAULT 0,
       notes TEXT DEFAULT '',
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (client_id) REFERENCES clients(id)
+      FOREIGN KEY (client_id) REFERENCES clients(id),
+      FOREIGN KEY (contract_id) REFERENCES contracts(id)
     );
   `);
+
+  // Simple migration for existing databases
+  try { await db.execute("ALTER TABLE invoices ADD COLUMN contract_id INTEGER"); } catch(e) {}
+  try { await db.execute("ALTER TABLE invoices ADD COLUMN category TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE invoices ADD COLUMN is_signed INTEGER DEFAULT 0"); } catch(e) {}
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS contracts (
