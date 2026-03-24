@@ -179,7 +179,7 @@ export default function Facturi() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card">
         <table className="data-table">
           <thead>
             <tr>
@@ -453,22 +453,33 @@ function FieldLabel({ children, style }: { children: React.ReactNode; style?: Re
 
 function StatusDropdown({ value, onChange }: { value: Status; onChange: (s: Status) => void }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    if (open) window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, [open]);
+
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative", zIndex: open ? 60 : 1 }}>
       <button onClick={() => setOpen(o => !o)} className={STATUS_BADGE[value]}
-        style={{ cursor: "pointer", border: "none", display: "flex", alignItems: "center", gap: 4 }}>
+        style={{ cursor: "pointer", border: "none", display: "flex", alignItems: "center", gap: 4, padding: "4px 10px" }}>
         {STATUS_LABELS[value]} <ChevronDown size={10} />
       </button>
       {open && (
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
+          position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 100,
           background: "var(--bg-2)", border: "1px solid var(--border-md)",
           borderRadius: "var(--r-md)", overflow: "hidden", minWidth: 120,
           boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
         }}>
           {(Object.keys(STATUS_LABELS) as Status[]).map(s => (
             <button key={s} onClick={() => { onChange(s); setOpen(false); }}
-              style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: s === value ? "var(--bg-3)" : "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--tx-2)" }}>
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: s === value ? "var(--bg-hover)" : "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--tx-1)" }}>
               <span className={STATUS_BADGE[s]}>{STATUS_LABELS[s]}</span>
             </button>
           ))}
@@ -490,8 +501,8 @@ function InvoiceTipizat({ invoice, client, settings, operatingMode }: {
     ? "art. 292 alin. (1) lit. f) din Codul Fiscal — venituri din drepturi de autor"
     : "art. 310 alin. (1) din Codul Fiscal — regim special de scutire pentru PFA";
   const fiscalNote = isDDA
-    ? "Venituri din drepturi de autor. Impozitul pe venit (10%) și contribuțiile sociale se calculează prin deducerea forfetară de 40% din venitul brut, conform art. 68 din Codul Fiscal."
-    : "Venituri din activități independente (PFA). Impozitul pe venit (10%) se aplică la venitul net realizat, conform art. 61 din Codul Fiscal.";
+    ? "Venituri din drepturi de autor. Impozitul pe venit (10%) se calculează prin aplicarea cotei asupra venitului brut minus deducerea forfetară de 40%, conform art. 70-72 din Codul Fiscal."
+    : "Venituri din activități independente (PFA). Impozitul pe venit (10%) se aplică la venitul net (venituri minus cheltuieli deductibile), conform art. 68 din Codul Fiscal.";
 
   return (
     <div className="tipizat" style={{
@@ -631,7 +642,7 @@ function InvoiceTipizat({ invoice, client, settings, operatingMode }: {
   );
 }
 
-// ── PVR Tipizat (print-ready) ────────────────────────────────────────────────
+// ── PVR Tipizat (professional Romanian legal format) ────────────────────────
 function PVRTipizat({ invoice, client, settings, contract }: {
   invoice: Invoice; client?: Client; settings: MySettings; contract?: any;
 }) {
@@ -639,56 +650,64 @@ function PVRTipizat({ invoice, client, settings, contract }: {
 
   return (
     <div className="tipizat" style={{
-      background: "#fff", padding: "60px", color: "#000",
-      minHeight: "1000px", display: "flex", flexDirection: "column",
-      boxShadow: "0 0 40px rgba(0,0,0,0.1)", borderRadius: "2px"
+      background: "#fff", padding: "60px 80px", color: "#000",
+      minHeight: "1100px", display: "flex", flexDirection: "column",
+      boxShadow: "0 0 40px rgba(0,0,0,0.1)", borderRadius: "2px",
+      fontSize: "14px", lineHeight: "1.6", fontFamily: "'Times New Roman', serif"
     }}>
       {/* ── Header ── */}
-      <div style={{ textAlign: "center", marginBottom: "40px" }}>
-        <h1 style={{ fontSize: "24px", fontWeight: "900", textTransform: "uppercase", margin: "0 0 10px" }}>
-          Proces-Verbal de Recepție a Serviciilor
+      <div style={{ textAlign: "center", marginBottom: "50px" }}>
+        <h1 style={{ fontSize: "22px", fontWeight: "bold", textTransform: "uppercase", margin: "0 0 5px" }}>
+          Proces-Verbal de Recepție
         </h1>
-        <div style={{ fontSize: "14px", color: "#666" }}>
-          Anexă la Contractul nr. {contract?.number || "—"} din data {contract?.date || "—"}
+        <div style={{ fontSize: "14px", fontWeight: "bold" }}>
+          Nr. {invoice.number.split("-").pop()} / Data: {invoice.date}
+        </div>
+        <div style={{ fontSize: "13px", marginTop: "10px", fontStyle: "italic" }}>
+          Anexă la Contractul nr. {contract?.number || "_______"} din data {contract?.date || "_______"}
         </div>
       </div>
 
-      <div style={{ marginBottom: "40px", fontSize: "14px", lineHeight: "1.6" }}>
-        <p>Încheiat astăzi, <strong>{invoice.date}</strong>, între:</p>
-        <p style={{ marginTop: "12px" }}>
-          <strong>FURNIZOARE:</strong> {settings.my_name}, CIF {settings.my_cif}, cu sediul în {settings.my_address}, în calitate de Autor/Prestator.
-        </p>
-        <p style={{ marginTop: "12px" }}>
-          <strong>BENEFICIAR:</strong> {client?.name}, CIF/CUI {client?.cif}, cu sediul în {client?.address}, în calitate de Beneficiar.
-        </p>
+      {/* ── Preamble ── */}
+      <div style={{ marginBottom: "30px" }}>
+        <p>Încheiat astăzi, <strong>{invoice.date}</strong>, între părțile contractante:</p>
+        
+        <div style={{ marginTop: "15px", marginLeft: "20px" }}>
+          <p><strong>1. PRESTATOR / AUTOR:</strong> {settings.my_name}, cu domiciliul/sediul în {settings.my_address}, identificat prin CIF/CNP {settings.my_cif}.</p>
+          <p style={{ marginTop: "10px" }}><strong>2. BENEFICIAR:</strong> {client?.name}, cu sediul în {client?.address}, identificat prin CUI/CIF {client?.cif}.</p>
+        </div>
       </div>
 
-      <div style={{ marginBottom: "20px", fontSize: "14px", borderBottom: "1px solid #000", paddingBottom: "8px", fontWeight: "800", textTransform: "uppercase" }}>
-        1. Obiectul Recepției
+      <div style={{ marginBottom: "30px" }}>
+        <p>Prezentul proces-verbal atestă recepția serviciilor și a livrabilelor efectuate de către Prestator în baza contractului menționat mai sus, pentru etapa: <strong>{invoice.category || "Predare finală / Conform contract"}</strong>.</p>
       </div>
-      <div style={{ marginBottom: "40px", fontSize: "14px", lineHeight: "1.6" }}>
-        Furnizorul a predat, iar Beneficiarul a recepționat următoarele livrabile/servicii aferente etapei: <strong>{invoice.category || "General"}</strong>
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}>
+
+      {/* ── Deliverables Table ── */}
+      <div style={{ marginBottom: "30px" }}>
+        <div style={{ fontWeight: "bold", marginBottom: "10px", textDecoration: "underline" }}>I. Obiectul recepției:</div>
+        <p style={{ marginBottom: "15px" }}>Prestatorul a predat, iar Beneficiarul a recepționat următoarele servicii/materiale:</p>
+        
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
           <thead>
-            <tr style={{ borderBottom: "2px solid #000" }}>
-              <th style={{ textAlign: "left", padding: "8px 0" }}>Descriere</th>
-              <th style={{ textAlign: "right", padding: "8px 0" }}>Valoare</th>
+            <tr style={{ borderBottom: "1.5px solid #000" }}>
+              <th style={{ textAlign: "left", padding: "10px 5px", fontSize: "13px" }}>Denumire serviciu / livrabil</th>
+              <th style={{ textAlign: "right", padding: "10px 5px", fontSize: "13px", width: "150px" }}>Valoare (RON)</th>
             </tr>
           </thead>
           <tbody>
             {invoice.items.map((item, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
-                <td style={{ padding: "12px 0" }}>{item.description}</td>
-                <td style={{ textAlign: "right", padding: "12px 0", fontFamily: "var(--font-mono)" }}>
-                  {item.total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
+              <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
+                <td style={{ padding: "12px 5px" }}>{item.description}</td>
+                <td style={{ textAlign: "right", padding: "12px 5px", fontWeight: "bold" }}>
+                  {item.total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td style={{ padding: "12px 0", fontWeight: "800" }}>TOTAL</td>
-              <td style={{ textAlign: "right", padding: "12px 0", fontWeight: "900", fontFamily: "var(--font-mono)" }}>
+              <td style={{ padding: "15px 5px", fontWeight: "bold", textAlign: "right" }}>TOTAL RECEPȚIONAT:</td>
+              <td style={{ textAlign: "right", padding: "15px 5px", fontWeight: "bold", fontSize: "16px", borderBottom: "2px double #000" }}>
                 {total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
               </td>
             </tr>
@@ -696,34 +715,36 @@ function PVRTipizat({ invoice, client, settings, contract }: {
         </table>
       </div>
 
-      <div style={{ marginBottom: "20px", fontSize: "14px", borderBottom: "1px solid #000", paddingBottom: "8px", fontWeight: "800", textTransform: "uppercase" }}>
-        2. Constatări
-      </div>
-      <div style={{ marginBottom: "40px", fontSize: "14px", lineHeight: "1.6" }}>
-        <p>Beneficiarul confirmă că serviciile menționate mai sus au fost prestate în totalitate, conform cerințelor stabilite în contract, fiind în stare corespunzătoare de utilizare.</p>
-        <p style={{ marginTop: "12px" }}>Prin semnarea prezentului document, Beneficiarul acceptă livrabilele și se obligă la plata sumei de <strong>{total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON</strong> conform termenelor contractuale.</p>
+      {/* ── Findings ── */}
+      <div style={{ marginBottom: "30px" }}>
+        <div style={{ fontWeight: "bold", marginBottom: "10px", textDecoration: "underline" }}>II. Constatări:</div>
+        <p>1. Reprezentanții părților au verificat livrabilele și au constatat că acestea corespund din punct de vedere calitativ și cantitativ cu cerințele și specificațiile tehnice prevăzute în contract.</p>
+        <p style={{ marginTop: "10px" }}>2. Serviciile au fost prestate în termenul agreat, neexistând obiecțiuni din partea Beneficiarului.</p>
+        <p style={{ marginTop: "10px" }}>3. Prezentul proces-verbal constituie baza legală pentru acceptarea la plată a serviciilor în valoare de <strong>{total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON</strong>.</p>
       </div>
 
       {invoice.notes && (
-        <>
-          <div style={{ marginBottom: "20px", fontSize: "14px", borderBottom: "1px solid #000", paddingBottom: "8px", fontWeight: "800", textTransform: "uppercase" }}>
-            3. Mențiuni Adiționale
-          </div>
-          <p style={{ marginBottom: "40px", fontSize: "14px", lineHeight: "1.6" }}>{invoice.notes}</p>
-        </>
+        <div style={{ marginBottom: "30px" }}>
+          <div style={{ fontWeight: "bold", marginBottom: "5px" }}>III. Alte mențiuni:</div>
+          <p style={{ fontStyle: "italic" }}>{invoice.notes}</p>
+        </div>
       )}
 
+      <div style={{ marginBottom: "50px" }}>
+        <p>Prezentul proces-verbal a fost încheiat în 2 (două) exemplare originale, câte unul pentru fiecare parte.</p>
+      </div>
+
       {/* ── Signatures ── */}
-      <div style={{ marginTop: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "100px", padding: "60px 0" }}>
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: "800", textTransform: "uppercase", color: "#999", marginBottom: "40px" }}>Am predat (Furnizor)</div>
-          <div style={{ borderBottom: "1px solid #000", height: "40px" }}></div>
-          <div style={{ fontSize: "13px", marginTop: "8px", fontWeight: "700" }}>{settings.my_name}</div>
+      <div style={{ marginTop: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "100px", paddingBottom: "40px" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontWeight: "bold", textTransform: "uppercase", marginBottom: "50px" }}>Am predat (Prestator)</div>
+          <div style={{ borderBottom: "1px solid #000", width: "200px", margin: "0 auto 10px" }}></div>
+          <div style={{ fontWeight: "bold" }}>{settings.my_name}</div>
         </div>
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: "800", textTransform: "uppercase", color: "#999", marginBottom: "40px" }}>Am recepționat (Beneficiar)</div>
-          <div style={{ borderBottom: "1px solid #000", height: "40px" }}></div>
-          <div style={{ fontSize: "13px", marginTop: "8px", fontWeight: "700" }}>{client?.name}</div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontWeight: "bold", textTransform: "uppercase", marginBottom: "50px" }}>Am recepționat (Beneficiar)</div>
+          <div style={{ borderBottom: "1px solid #000", width: "200px", margin: "0 auto 10px" }}></div>
+          <div style={{ fontWeight: "bold" }}>{client?.name}</div>
         </div>
       </div>
     </div>
