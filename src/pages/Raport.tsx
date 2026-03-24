@@ -273,6 +273,11 @@ export default function Raport() {
         <div className="card" style={{ overflow: "hidden" }}>
           <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", background: "var(--bg-2)", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
             <PieChart size={14} /> Categorii Cheltuieli
+            {mode === "dda" && (
+              <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 500, color: "var(--amber)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "var(--r-sm)", padding: "2px 7px" }}>
+                nedeductibile fiscal (forfetar 40%)
+              </span>
+            )}
           </div>
           <div style={{ padding: "12px 24px" }}>
             {data.categoryBreakdown.length === 0 ? (

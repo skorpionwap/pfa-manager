@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, X, Check, Search, Receipt, Filter, Sparkles, Loader2 } from "lucide-react";
-import { getDb, isTauri } from "@/lib/db";
+import { getDb, getSetting, isTauri } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import { CATEGORIES, CATEGORY_BADGE, getCategoryLabel } from "@/lib/constants";
 import { pickAndAnalyzeReceipt, type ExtractedReceipt } from "@/lib/gemini";
-import type { Expense } from "@/types";
+import type { Expense, OperatingMode } from "@/types";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -26,11 +26,14 @@ export default function Cheltuieli() {
   const [form, setForm]             = useState(emptyForm());
   const [scanLoading, setScanLoading] = useState(false);
   const [scanResult, setScanResult]   = useState<ExtractedReceipt | null>(null);
+  const [mode, setMode]             = useState<OperatingMode>("dda");
 
   const load = async () => {
     const db = await getDb();
     const rows = await db.select<Expense[]>("SELECT * FROM expenses ORDER BY date DESC, created_at DESC");
     setExpenses(rows);
+    const m = (await getSetting("operating_mode")) as OperatingMode || "dda";
+    setMode(m);
   };
   useEffect(() => { load(); }, []);
 
@@ -142,6 +145,19 @@ export default function Cheltuieli() {
           </button>
         </div>
       </div>
+
+      {/* DDA mode info banner */}
+      {mode === "dda" && (
+        <div style={{ marginBottom: 20, padding: "12px 16px", borderRadius: "var(--r-md)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)", display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 15, flexShrink: 0 }}>ℹ️</span>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--amber)", marginBottom: 3 }}>Mod Drepturi de Autor — cheltuielile nu sunt deductibile fiscal direct</div>
+            <div style={{ fontSize: 12, color: "var(--tx-3)", lineHeight: 1.6 }}>
+              În regimul DDA se aplică automat deducerea forfetară de <strong style={{ color: "var(--tx-2)" }}>40%</strong> din venitul brut. Cheltuielile reale înregistrate aici nu reduc baza de impozitare, dar pot fi utile pentru evidența contabilă proprie.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>

@@ -277,7 +277,7 @@ export default function Contracte() {
       analysis.parti.beneficiar.toLowerCase().includes(c.name.toLowerCase())
     );
     const f = empty();
-    f.type    = analysis.tip === "cesiune" ? "cesiune" : "prestari";
+    f.type    = mode === "pfa" ? "prestari" : (analysis.tip === "cesiune" ? "cesiune" : "cesiune_abonament");
     f.number  = analysis.numar || "";
     f.date    = analysis.data  || today();
     f.amount  = analysis.valoare || 0;
@@ -473,9 +473,11 @@ export default function Contracte() {
 
               {/* Metadata bar */}
               <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--bg-1)" }}>
-                {/* Type toggle */}
+                {/* Type toggle — filtered by operating mode */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                  {(Object.entries(TYPE_LABELS) as [ContractType, string][]).map(([t, l]) => (
+                  {(Object.entries(TYPE_LABELS) as [ContractType, string][])
+                    .filter(([t]) => mode === "dda" ? t !== "prestari" : t === "prestari")
+                    .map(([t, l]) => (
                     <button key={t} type="button"
                       onClick={() => {
                         const newOpts = defaultTemplateOptions(t);
