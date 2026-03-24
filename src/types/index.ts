@@ -37,7 +37,7 @@ export interface Contract {
   id: number;
   client_id: number | null;
   client_name?: string;
-  type: "cesiune" | "prestari";
+  type: "cesiune" | "cesiune_abonament" | "prestari";
   number: string;
   date: string;
   description: string;

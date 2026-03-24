@@ -8,14 +8,20 @@ import { getDb, getSetting, isTauri } from "@/lib/db";
 import { pickAndAnalyzeContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
 import { useToast } from "@/components/Toast";
 import type { Client, Contract, OperatingMode } from "@/types";
-import { TEMPLATE_HTML, substituteVars } from "@/lib/templates";
+import { TEMPLATE_HTML, substituteVars, generateTranseTable } from "@/lib/templates";
 
 type ContractType = Contract["type"];
 type ContractStatus = Contract["status"];
 
 const TYPE_LABELS: Record<ContractType, string> = {
   cesiune: "Cesiune drepturi autor",
+  cesiune_abonament: "Cesiune + Abonament",
   prestari: "Prestări servicii",
+};
+const TYPE_BADGE: Record<ContractType, string> = {
+  cesiune: "badge badge-blue",
+  cesiune_abonament: "badge badge-purple",
+  prestari: "badge badge-amber",
 };
 const STATUS_BADGE: Record<ContractStatus, string> = {
   activ: "badge badge-green",
@@ -36,6 +42,42 @@ const RISK_STYLE: Record<ContractRisk["nivel"], { border: string; label: string 
   mediu:   { border: "#f59e0b", label: "badge badge-amber" },
   scăzut:  { border: "#22c55e", label: "badge badge-green" },
 };
+
+// ── Template options ──────────────────────────────────────────────────────────
+interface TransaConfig { label: string; procent: number; }
+interface TemplateOptions {
+  transe: TransaConfig[];
+  termen_plata: number;          // zile termen plată
+  preaviz: number;               // zile preaviz reziliere
+  exclusivitate: "exclusiv" | "neexclusiv";
+  valoare_abonament: string;     // cesiune_abonament
+  luna_start_abonament: string;  // cesiune_abonament
+}
+
+function defaultTemplateOptions(type: ContractType): TemplateOptions {
+  const base: TemplateOptions = {
+    transe: [
+      { label: "La semnarea contractului", procent: 50 },
+      { label: "La recepția finală (Proces-Verbal)", procent: 50 },
+    ],
+    termen_plata: 5,
+    preaviz: 30,
+    exclusivitate: "neexclusiv",
+    valoare_abonament: "",
+    luna_start_abonament: "luna a 3-a de la livrarea finală",
+  };
+  if (type === "cesiune") return { ...base, preaviz: 15 };
+  if (type === "prestari") return {
+    ...base,
+    transe: [
+      { label: "Avans la semnare", procent: 30 },
+      { label: "La predarea livrabilelor finale", procent: 70 },
+    ],
+    termen_plata: 15,
+    preaviz: 15,
+  };
+  return base; // cesiune_abonament
+}
 
 const today = () => new Date().toISOString().slice(0, 10);
 const empty = (): Omit<Contract, "id" | "created_at" | "client_name"> => ({
@@ -78,6 +120,7 @@ export default function Contracte() {
   const [mode, setMode]             = useState<OperatingMode>("dda");
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<ContractAnalysis | null>(null);
+  const [templateOpts, setTemplateOpts] = useState<TemplateOptions>(() => defaultTemplateOptions("cesiune"));
 
   const editor = useEditor({
     extensions: [StarterKit, Underline],
@@ -102,44 +145,64 @@ export default function Contracte() {
 
   useEffect(() => { load(); }, []);
 
-  const loadVars = async (_type: ContractType, clientId: number | null, formData: typeof form) => {
+  const loadVars = async (
+    _type: ContractType,
+    clientId: number | null,
+    formData: typeof form,
+    opts: TemplateOptions,
+  ) => {
     const db = await getDb();
     const rows = await db.select<{ key: string; value: string }[]>("SELECT key, value FROM settings");
     const s: Record<string, string> = {};
     rows.forEach(r => (s[r.key] = r.value));
-    
+
     const client = clients.find(c => c.id === clientId);
     const clientDetails = [
       client?.cif ? `CIF ${client.cif}` : "",
       client?.address ? `cu sediul în ${client.address}` : "",
     ].filter(Boolean).join(", ");
 
-    return {
-      AUTOR_NUME:    s.my_name    || "Numele Dvs.",
-      AUTOR_CNP:     s.my_cif     || "CNP/CIF",
-      AUTOR_ADRESA:  s.my_address || "Adresa Dvs.",
-      AUTOR_EMAIL:   s.my_email   || "email@exemplu.ro",
-      AUTOR_IBAN:    s.my_iban    || "RO................",
-      AUTOR_BANCA:   s.my_bank    || "Banca...",
-      
-      CESIONAR_NUME: client?.name || "Beneficiar",
+    const vars: Record<string, string> = {
+      AUTOR_NUME:       s.my_name    || "Numele Dvs.",
+      AUTOR_CNP:        s.my_cif     || "CNP/CIF",
+      AUTOR_ADRESA:     s.my_address || "Adresa Dvs.",
+      AUTOR_EMAIL:      s.my_email   || "email@exemplu.ro",
+      AUTOR_IBAN:       s.my_iban    || "RO................",
+      AUTOR_BANCA:      s.my_bank    || "Banca...",
+
+      CESIONAR_NUME:    client?.name || "Beneficiar",
       CESIONAR_DETALII: clientDetails || "cu datele de identificare...",
-      
-      CONTRACT_NR:   formData.number || "—",
-      DATA:          formData.date,
-      VALOARE:       formData.amount > 0 ? formData.amount.toLocaleString("ro-RO") : "—",
-      DESCRIERE_SCURTA: formData.description ? "Conform specificațiilor" : "Software personalizat",
-      
-      RESPONSABIL_TAXE: mode === "dda" ? "Cesionarului (reținere la sursă) / Cedentului (declarație proprie)" : "Prestatorului (PFA)",
+
+      CONTRACT_NR:      formData.number || "—",
+      DATA:             formData.date,
+      VALOARE:          formData.amount > 0
+                          ? formData.amount.toLocaleString("ro-RO", { minimumFractionDigits: 2 })
+                          : "—",
+
+      TRANSE_TABLE:     generateTranseTable(formData.amount, opts.transe),
+      TERMEN_PLATA:     String(opts.termen_plata),
+      PREAVIZ:          String(opts.preaviz),
+      EXCLUSIVITATE:    opts.exclusivitate,
+
+      RESPONSABIL_TAXE: mode === "dda"
+        ? "Cesionarul va reține și vira la bugetul de stat impozitul pe venit de 10%, în numele Cedentului"
+        : "Prestatorul este responsabil cu declararea și plata impozitului pe venit și a contribuțiilor sociale",
     };
+
+    // Abonament — only substituted if provided; otherwise stay as visible {{PLACEHOLDER}}
+    if (opts.valoare_abonament)    vars.VALOARE_ABONAMENT    = opts.valoare_abonament;
+    if (opts.luna_start_abonament) vars.LUNA_START_ABONAMENT = opts.luna_start_abonament;
+
+    return vars;
   };
 
   const openNew = () => {
     setEditing(null);
     const f = empty();
-    // Set default type based on mode
     f.type = mode === "dda" ? "cesiune" : "prestari";
+    const opts = defaultTemplateOptions(f.type);
     setForm(f);
+    setTemplateOpts(opts);
     editor?.commands.setContent("");
     setShowForm(true);
   };
@@ -148,13 +211,19 @@ export default function Contracte() {
     setEditing(c);
     setForm({ client_id: c.client_id, type: c.type, number: c.number, date: c.date,
               description: c.description, amount: c.amount, status: c.status, notes: c.notes });
+    setTemplateOpts(defaultTemplateOptions(c.type));
     editor?.commands.setContent(c.description || "");
     setShowForm(true);
   };
 
-  const applyTemplate = async (type: ContractType, clientId: number | null, formData: typeof form) => {
-    const vars = await loadVars(type, clientId, formData);
-    const html = substituteVars(TEMPLATE_HTML[type], vars);
+  const applyTemplate = async (
+    type: ContractType,
+    clientId: number | null,
+    formData: typeof form,
+    opts: TemplateOptions,
+  ) => {
+    const vars = await loadVars(type, clientId, formData, opts);
+    const html = substituteVars(TEMPLATE_HTML[type] ?? "", vars);
     setForm(f => ({ ...f, type }));
     editor?.commands.setContent(html);
   };
@@ -268,7 +337,7 @@ export default function Contracte() {
                   <span style={{ display: "block", fontSize: 11, color: "var(--tx-3)", fontFamily: "var(--font-mono)" }}>{c.date}</span>
                 </td>
                 <td style={{ color: "var(--tx-1)" }}>{c.client_name || <span style={{ color: "var(--tx-4)" }}>—</span>}</td>
-                <td><span className={c.type === "cesiune" ? "badge badge-blue" : "badge badge-amber"}>{TYPE_LABELS[c.type]}</span></td>
+                <td><span className={TYPE_BADGE[c.type]}>{TYPE_LABELS[c.type]}</span></td>
                 <td style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--tx-1)" }}>
                   {c.amount > 0 ? `${c.amount.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON` : "—"}
                 </td>
@@ -408,7 +477,11 @@ export default function Contracte() {
                 <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                   {(Object.entries(TYPE_LABELS) as [ContractType, string][]).map(([t, l]) => (
                     <button key={t} type="button"
-                      onClick={() => applyTemplate(t, form.client_id, form)}
+                      onClick={() => {
+                        const newOpts = defaultTemplateOptions(t);
+                        setTemplateOpts(newOpts);
+                        applyTemplate(t, form.client_id, form, newOpts);
+                      }}
                       style={{ flex: 1, padding: "7px 12px", borderRadius: "var(--r-md)", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.12s",
                         background: form.type === t ? "var(--ac)" : "var(--bg-2)",
                         color: form.type === t ? "#fff" : "var(--tx-2)",
@@ -451,13 +524,20 @@ export default function Contracte() {
                 </div>
               </div>
 
+              {/* Template options panel */}
+              <TemplateOptionsPanel
+                opts={templateOpts}
+                onChange={setTemplateOpts}
+                type={form.type}
+              />
+
               {/* Rich text editor */}
               <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: "0 24px 0" }}>
                 <div style={{ paddingTop: 14, paddingBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
                   <Label style={{ marginBottom: 0 }}>Text contract</Label>
                   <button type="button" className="btn btn-ghost" style={{ fontSize: 11, padding: "4px 10px" }}
-                    onClick={() => applyTemplate(form.type, form.client_id, form)}>
-                    Reîncarcă template
+                    onClick={() => applyTemplate(form.type, form.client_id, form, templateOpts)}>
+                    Regenerează din opțiuni
                   </button>
                 </div>
                 <div className="tiptap-wrap" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", marginBottom: 12 }}>
@@ -485,6 +565,152 @@ export default function Contracte() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Template Options Panel ────────────────────────────────────────────────────
+function TemplateOptionsPanel({
+  opts, onChange, type,
+}: {
+  opts: TemplateOptions;
+  onChange: (o: TemplateOptions) => void;
+  type: ContractType;
+}) {
+  const total = opts.transe.reduce((s, t) => s + t.procent, 0);
+
+  const updateTransa = (i: number, field: keyof TransaConfig, raw: string) => {
+    const transe = opts.transe.map((t, idx) =>
+      idx === i ? { ...t, [field]: field === "procent" ? Math.max(0, Number(raw)) : raw } : t,
+    );
+    onChange({ ...opts, transe });
+  };
+
+  const addTransa = () => {
+    if (opts.transe.length >= 4) return;
+    onChange({ ...opts, transe: [...opts.transe, { label: "Altă condiție de plată", procent: 0 }] });
+  };
+
+  const removeTransa = (i: number) => {
+    if (opts.transe.length <= 1) return;
+    onChange({ ...opts, transe: opts.transe.filter((_, idx) => idx !== i) });
+  };
+
+  const f11: React.CSSProperties = { fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--tx-3)", marginBottom: 5 };
+  const numInput: React.CSSProperties = { width: 52, fontFamily: "var(--font-mono)", fontSize: 12, padding: "4px 7px", textAlign: "center" };
+
+  return (
+    <div style={{ padding: "12px 24px 14px", borderBottom: "1px solid var(--border)", background: "var(--bg-0)", flexShrink: 0 }}>
+      {/* Section label + total warning */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={f11}>Configurare template</span>
+        {total !== 100 && (
+          <span style={{ fontSize: 11, color: "#dc2626", fontFamily: "var(--font-mono)" }}>
+            ⚠ Tranșe: {total}% / 100%
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
+
+        {/* Tranches column */}
+        <div style={{ flex: "1 1 300px", minWidth: 260 }}>
+          <div style={f11}>Tranșe de plată</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {opts.transe.map((t, i) => (
+              <div key={i} style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                <input
+                  className="field"
+                  value={t.label}
+                  onChange={e => updateTransa(i, "label", e.target.value)}
+                  placeholder="Condiție de plată"
+                  style={{ flex: 1, fontSize: 12, padding: "4px 8px" }}
+                />
+                <input
+                  className="field"
+                  type="number"
+                  value={t.procent}
+                  onChange={e => updateTransa(i, "procent", e.target.value)}
+                  min={0} max={100}
+                  style={numInput}
+                />
+                <span style={{ fontSize: 11, color: "var(--tx-3)" }}>%</span>
+                {opts.transe.length > 1 && (
+                  <button type="button" onClick={() => removeTransa(i)}
+                    style={{ padding: 3, background: "none", border: "none", cursor: "pointer", color: "var(--tx-4)", display: "flex" }}>
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {opts.transe.length < 4 && (
+            <button type="button" onClick={addTransa} className="btn btn-ghost"
+              style={{ marginTop: 6, fontSize: 11, padding: "3px 9px", display: "flex", alignItems: "center", gap: 4 }}>
+              <Plus size={10} /> Adaugă tranșă
+            </button>
+          )}
+        </div>
+
+        {/* Terms + exclusivity column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div>
+              <div style={f11}>Termen plată</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <input className="field" type="number" value={opts.termen_plata} min={1}
+                  onChange={e => onChange({ ...opts, termen_plata: Math.max(1, Number(e.target.value)) })}
+                  style={numInput} />
+                <span style={{ fontSize: 11, color: "var(--tx-3)" }}>zile</span>
+              </div>
+            </div>
+            <div>
+              <div style={f11}>Preaviz reziliere</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <input className="field" type="number" value={opts.preaviz} min={1}
+                  onChange={e => onChange({ ...opts, preaviz: Math.max(1, Number(e.target.value)) })}
+                  style={numInput} />
+                <span style={{ fontSize: 11, color: "var(--tx-3)" }}>zile</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style={f11}>Tip cesiune</div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {(["neexclusiv", "exclusiv"] as const).map(v => (
+                <button key={v} type="button" onClick={() => onChange({ ...opts, exclusivitate: v })}
+                  style={{ padding: "3px 10px", fontSize: 11, fontWeight: 500, borderRadius: "var(--r-md)", cursor: "pointer",
+                    background: opts.exclusivitate === v ? "var(--ac)" : "var(--bg-2)",
+                    color: opts.exclusivitate === v ? "#fff" : "var(--tx-2)",
+                    border: `1px solid ${opts.exclusivitate === v ? "var(--ac)" : "var(--border)"}` }}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Abonament fields — only for cesiune_abonament */}
+        {type === "cesiune_abonament" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={f11}>Abonament (RON/lună)</div>
+              <input className="field" type="number" value={opts.valoare_abonament} min={0}
+                onChange={e => onChange({ ...opts, valoare_abonament: e.target.value })}
+                placeholder="ex: 400"
+                style={{ width: 100, fontFamily: "var(--font-mono)", fontSize: 12, padding: "4px 8px" }} />
+            </div>
+            <div>
+              <div style={f11}>Pornind din</div>
+              <input className="field" value={opts.luna_start_abonament}
+                onChange={e => onChange({ ...opts, luna_start_abonament: e.target.value })}
+                placeholder="luna a 3-a de la livrare"
+                style={{ minWidth: 200, fontSize: 12, padding: "4px 8px" }} />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
