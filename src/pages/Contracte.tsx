@@ -456,7 +456,7 @@ export default function Contracte() {
       {/* ── Contract form modal ──────────────────────────────────────────────── */}
       {showForm && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div className="modal" style={{ width: "min(860px, 96vw)", maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <div className="modal" style={{ width: "min(1100px, 96vw)", height: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
             {/* Modal header */}
             <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
@@ -468,101 +468,108 @@ export default function Contracte() {
               </button>
             </div>
 
-            {/* Body */}
-            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {/* Body - two columns */}
+            <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
 
-              {/* Metadata bar */}
-              <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--bg-1)" }}>
-                {/* Type toggle — filtered by operating mode */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                  {(Object.entries(TYPE_LABELS) as [ContractType, string][])
-                    .filter(([t]) => mode === "dda" ? t !== "prestari" : t === "prestari")
-                    .map(([t, l]) => (
-                    <button key={t} type="button"
-                      onClick={() => {
-                        const newOpts = defaultTemplateOptions(t);
-                        setTemplateOpts(newOpts);
-                        applyTemplate(t, form.client_id, form, newOpts);
-                      }}
-                      style={{ flex: 1, padding: "7px 12px", borderRadius: "var(--r-md)", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.12s",
-                        background: form.type === t ? "var(--ac)" : "var(--bg-2)",
-                        color: form.type === t ? "#fff" : "var(--tx-2)",
-                        border: `1px solid ${form.type === t ? "var(--ac)" : "var(--border)"}` }}>
-                      {l}
-                    </button>
-                  ))}
+              {/* LEFT COLUMN */}
+              <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)", overflow: "auto" }}>
+                {/* Type toggle */}
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-1)" }}>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {(Object.entries(TYPE_LABELS) as [ContractType, string][])
+                      .filter(([t]) => mode === "dda" ? t !== "prestari" : t === "prestari")
+                      .map(([t, l]) => (
+                      <button key={t} type="button"
+                        onClick={() => {
+                          const newOpts = defaultTemplateOptions(t);
+                          setTemplateOpts(newOpts);
+                          applyTemplate(t, form.client_id, form, newOpts);
+                        }}
+                        style={{ flex: 1, padding: "7px 12px", borderRadius: "var(--r-md)", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.12s",
+                          background: form.type === t ? "var(--ac)" : "var(--bg-2)",
+                          color: form.type === t ? "#fff" : "var(--tx-2)",
+                          border: `1px solid ${form.type === t ? "var(--ac)" : "var(--border)"}` }}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Fields grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 10 }}>
-                  <div>
-                    <Label>Client</Label>
-                    <select className="field" value={form.client_id ?? ""} onChange={e => setForm(f => ({ ...f, client_id: Number(e.target.value) || null }))}>
-                      <option value="">Fără client</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                {/* Fields */}
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <Label>Client</Label>
+                      <select className="field" value={form.client_id ?? ""} onChange={e => setForm(f => ({ ...f, client_id: Number(e.target.value) || null }))}>
+                        <option value="">Fără client</option>
+                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div>
+                        <Label>Nr. contract</Label>
+                        <input className="field" style={{ fontFamily: "var(--font-mono)" }} value={form.number} onChange={e => setForm(f => ({ ...f, number: e.target.value }))} placeholder="C-2026-001" />
+                      </div>
+                      <div>
+                        <Label>Dată</Label>
+                        <input className="field" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div>
+                        <Label>Valoare (RON)</Label>
+                        <input className="field" type="number" style={{ fontFamily: "var(--font-mono)" }} value={form.amount || ""} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} placeholder="0" min={0} step={0.01} />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <select className="field" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as ContractStatus }))}>
+                          <option value="activ">Activ</option>
+                          <option value="pending">Spre aprobare</option>
+                          <option value="expirat">Expirat</option>
+                          <option value="reziliat">Reziliat</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Nr. contract</Label>
-                    <input className="field" style={{ fontFamily: "var(--font-mono)" }} value={form.number} onChange={e => setForm(f => ({ ...f, number: e.target.value }))} placeholder="C-2026-001" />
-                  </div>
-                  <div>
-                    <Label>Dată</Label>
-                    <input className="field" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label>Valoare (RON)</Label>
-                    <input className="field" type="number" style={{ fontFamily: "var(--font-mono)" }} value={form.amount || ""} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} placeholder="0" min={0} step={0.01} />
-                  </div>
-                  <div>
-                    <Label>Status</Label>
-                    <select className="field" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as ContractStatus }))}>
-                      <option value="activ">Activ</option>
-                      <option value="pending">Spre aprobare</option>
-                      <option value="expirat">Expirat</option>
-                      <option value="reziliat">Reziliat</option>
-                    </select>
-                  </div>
+                </div>
+
+                {/* Template options */}
+                <TemplateOptionsPanel opts={templateOpts} onChange={setTemplateOpts} type={form.type} />
+
+                {/* Notes */}
+                <div style={{ padding: "16px 20px", flexShrink: 0 }}>
+                  <Label>Note interne</Label>
+                  <textarea className="field" rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Note vizibile doar pentru tine..." style={{ resize: "none" }} />
+                </div>
+
+                {/* Footer */}
+                <div style={{ padding: "14px 20px 18px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0, marginTop: "auto" }}>
+                  <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Anulează</button>
+                  <button className="btn btn-primary" onClick={save}>
+                    <Check size={13} strokeWidth={2.5} />
+                    {editing ? "Salvează" : "Înregistrează"}
+                  </button>
                 </div>
               </div>
 
-              {/* Template options panel */}
-              <TemplateOptionsPanel
-                opts={templateOpts}
-                onChange={setTemplateOpts}
-                type={form.type}
-              />
-
-              {/* Rich text editor */}
-              <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: "0 24px 0" }}>
-                <div style={{ paddingTop: 14, paddingBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              {/* RIGHT COLUMN - Editor sidebar */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-0)", minWidth: 0 }}>
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
                   <Label style={{ marginBottom: 0 }}>Text contract</Label>
                   <button type="button" className="btn btn-ghost" style={{ fontSize: 11, padding: "4px 10px" }}
                     onClick={() => applyTemplate(form.type, form.client_id, form, templateOpts)}>
-                    Regenerează din opțiuni
+                    Regenerează
                   </button>
                 </div>
-                <div className="tiptap-wrap" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", marginBottom: 12 }}>
-                  <Toolbar editor={editor} />
-                  <EditorContent editor={editor} style={{ flex: 1, overflow: "hidden" }} />
+                <div style={{ flex: 1, padding: "12px 16px", display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  <div className="tiptap-wrap" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                    <Toolbar editor={editor} />
+                    <EditorContent editor={editor} style={{ flex: 1 }} />
+                  </div>
                 </div>
               </div>
 
-              {/* Notes */}
-              <div style={{ padding: "0 24px 16px", flexShrink: 0 }}>
-                <Label>Note interne</Label>
-                <textarea className="field" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  placeholder="Note vizibile doar pentru tine..." style={{ resize: "none" }} />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div style={{ padding: "14px 24px 18px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0 }}>
-              <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Anulează</button>
-              <button className="btn btn-primary" onClick={save}>
-                <Check size={13} strokeWidth={2.5} />
-                {editing ? "Salvează" : "Înregistrează contract"}
-              </button>
             </div>
           </div>
         </div>
