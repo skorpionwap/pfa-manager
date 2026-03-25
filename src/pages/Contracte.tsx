@@ -129,7 +129,7 @@ function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         className="tiptap-font-select"
         title="Font"
         value={editor.getAttributes("textStyle").fontFamily ?? ""}
-        onFocus={() => {
+        onMouseDown={() => {
           const { from, to } = editor.state.selection;
           savedSelection.current = { from, to };
         }}
