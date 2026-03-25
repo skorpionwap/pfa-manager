@@ -382,7 +382,7 @@ export default function Facturi() {
                   <select className="field" value={contractId} onChange={e => setContractId(Number(e.target.value) || "")}>
                     <option value="">Selectează contract...</option>
                     {contracts.filter(c => !clientId || c.client_id === clientId).map(c => (
-                      <option key={c.id} value={c.id}>{c.number} - {c.description.slice(0, 30)}...</option>
+                      <option key={c.id} value={c.id}>{c.number}</option>
                     ))}
                   </select>
                 </div>

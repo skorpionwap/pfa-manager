@@ -101,6 +101,7 @@ export default function Contracte() {
   const [templateOpts, setTemplateOpts] = useState<TemplateOptions>(() => defaultTemplateOptions("cesiune"));
   const [editorContent, setEditorContent] = useState("");
   const [viewContract, setViewContract] = useState<Contract | null>(null);
+  const [printHtml, setPrintHtml] = useState<string | null>(null);
 
   const load = async () => {
     const db = await getDb();
@@ -118,6 +119,13 @@ export default function Contracte() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Trigger print after print-frame mounts
+  useEffect(() => {
+    if (!printHtml) return;
+    window.print();
+    setPrintHtml(null);
+  }, [printHtml]);
 
   const loadVars = async (
     _type: ContractType,
@@ -242,27 +250,7 @@ export default function Contracte() {
     }
   };
 
-  const printContract = (html: string, number: string) => {
-    const w = window.open("", "_blank", "width=900,height=700");
-    if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head><title>Contract ${number || ""}</title>
-<style>
-  body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; font-size: 11pt; line-height: 1.7; margin: 2.5cm; color: #111; }
-  h1 { font-size: 14pt; text-align: center; margin-bottom: 0.5em; }
-  h2 { font-size: 12pt; margin-top: 1.5em; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
-  h3 { font-size: 11pt; margin-top: 1em; }
-  p { margin: 0 0 0.8em; }
-  ul, ol { margin: 0 0 0.8em; padding-left: 1.5em; }
-  li { margin-bottom: 0.3em; }
-  table { width: 100%; border-collapse: collapse; margin: 1em 0; }
-  td, th { border: 1px solid #555; padding: 6px 10px; font-size: 10pt; }
-  th { background: #eee; font-weight: bold; }
-  @media print { @page { margin: 1.5cm; } body { margin: 0; } }
-</style></head><body>${html}</body></html>`);
-    w.document.close();
-    w.focus();
-    setTimeout(() => { w.print(); }, 400);
-  };
+  const printContract = (html: string) => setPrintHtml(html);
 
   const applyTemplate = async (
     type: ContractType,
@@ -716,9 +704,8 @@ export default function Contracte() {
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {/* Print button — only if there's HTML content */}
                 {viewContract.description && (
-                  <button className="btn btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}
-                    onClick={() => printContract(viewContract.description, viewContract.number)}>
-                    <Printer size={13} /> Printează
+                  <button className="btn btn-primary" onClick={() => printContract(viewContract.description)}>
+                    <Printer size={13} strokeWidth={2.5} /> Printează
                   </button>
                 )}
                 {/* Open file button — only for client contracts with a file */}
@@ -757,13 +744,11 @@ export default function Contracte() {
             </div>
 
             {/* Body */}
-            <div style={{ flex: 1, overflow: "auto", padding: "28px 40px" }}>
+            <div style={{ flex: 1, overflow: "auto", background: "#e8e8e8", padding: 24 }}>
               {viewContract.description ? (
-                <div
-                  className="contract-view-content"
-                  dangerouslySetInnerHTML={{ __html: viewContract.description }}
-                  style={{ maxWidth: 720, margin: "0 auto", lineHeight: 1.7 }}
-                />
+                <div style={{ background: "white", borderRadius: 4, padding: "48px 64px", maxWidth: 800, margin: "0 auto", boxShadow: "0 2px 16px rgba(0,0,0,0.18)" }}>
+                  <div dangerouslySetInnerHTML={{ __html: viewContract.description }} />
+                </div>
               ) : (
                 <div style={{ textAlign: "center", padding: "60px 0", color: "var(--tx-4)" }}>
                   <FileText size={32} style={{ margin: "0 auto 12px", display: "block", opacity: 0.3 }} />
@@ -789,6 +774,14 @@ export default function Contracte() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Print frame (hidden, shown only on print) ────────────────────────── */}
+      {printHtml && (
+        <div className="print-frame">
+          <div style={{ fontFamily: "'Georgia','Times New Roman',serif", fontSize: 14, lineHeight: 1.7, color: "#111", padding: "2.5cm", maxWidth: 800, margin: "0 auto" }}
+            dangerouslySetInnerHTML={{ __html: printHtml }} />
         </div>
       )}
     </div>
