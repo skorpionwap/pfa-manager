@@ -113,6 +113,18 @@ const TEXT_COLORS = [
   { value: "#0891b2", label: "Cian" },
 ];
 
+const FONT_SIZES = [
+  { value: "11px", label: "11px" },
+  { value: "12px", label: "12px" },
+  { value: "13px", label: "13px" },
+  { value: "14px", label: "14px" },
+  { value: "16px", label: "16px" },
+  { value: "18px", label: "18px" },
+  { value: "20px", label: "20px" },
+  { value: "24px", label: "24px" },
+  { value: "32px", label: "32px" },
+];
+
 // ── Toolbar Component ───────────────────────────────────────────────────────────
 function Toolbar() {
   const [editor] = useLexicalComposerContext();
@@ -129,6 +141,7 @@ function Toolbar() {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [alignment, setAlignment] = useState<string>("left");
   const [fontFamily, setFontFamily] = useState<string>("");
+  const [fontSize, setFontSize] = useState<string>("13px");
   const [color, setColor] = useState<string>("#000000");
 
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -163,8 +176,9 @@ function Toolbar() {
       setAlignment(format || "left");
     }
 
-    // Font family and color
+    // Font family, size and color
     setFontFamily($getSelectionStyleValueForProperty(selection, "font-family", ""));
+    setFontSize($getSelectionStyleValueForProperty(selection, "font-size", "13px"));
     setColor($getSelectionStyleValueForProperty(selection, "color", "#000000"));
 
     // Reset states
@@ -312,6 +326,18 @@ function Toolbar() {
     editor.focus();
   };
 
+  const applyFontSize = (fontSizeValue: string) => {
+    editor.update(() => {
+      const selection = $getSelectionLexical();
+      if ($isRangeSelection(selection)) {
+        $patchStyleText(selection, {
+          "font-size": fontSizeValue,
+        });
+      }
+    });
+    editor.focus();
+  };
+
   const applyColor = (colorValue: string) => {
     editor.update(() => {
       const selection = $getSelectionLexical();
@@ -374,6 +400,17 @@ function Toolbar() {
         {FONTS.map((f) => (
           <option key={f.value} value={f.value}>
             {f.label}
+          </option>
+        ))}
+      </select>
+      <select
+        className="toolbar-size-select"
+        onChange={(e) => applyFontSize(e.target.value)}
+        value={fontSize}
+      >
+        {FONT_SIZES.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
           </option>
         ))}
       </select>

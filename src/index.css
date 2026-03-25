@@ -416,27 +416,40 @@ select.field option {
   background: #e2e8f0;
   margin: 0 6px;
 }
-.lexical-toolbar .toolbar-font-select {
+.lexical-toolbar .toolbar-font-select,
+.lexical-toolbar .toolbar-size-select {
+  appearance: none;
+  -webkit-appearance: none;
   font-size: 11px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 4px 8px;
+  padding: 2px 24px 2px 8px;
   border: 1px solid #e2e8f0;
   border-radius: 5px;
   background: #ffffff;
   color: #475569;
   cursor: pointer;
-  height: 26px;
-  min-width: 100px;
+  height: 28px;
+  line-height: 22px;
   transition: all 0.15s ease;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 10px;
 }
-.lexical-toolbar .toolbar-font-select option {
+.lexical-toolbar .toolbar-font-select { min-width: 100px; }
+.lexical-toolbar .toolbar-size-select { min-width: 60px; }
+
+.lexical-toolbar .toolbar-font-select option,
+.lexical-toolbar .toolbar-size-select option {
   background: #ffffff;
   color: #1e293b;
 }
-.lexical-toolbar .toolbar-font-select:hover {
+.lexical-toolbar .toolbar-font-select:hover,
+.lexical-toolbar .toolbar-size-select:hover {
   border-color: #cbd5e1;
 }
-.lexical-toolbar .toolbar-font-select:focus {
+.lexical-toolbar .toolbar-font-select:focus,
+.lexical-toolbar .toolbar-size-select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
