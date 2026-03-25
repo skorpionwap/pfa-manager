@@ -56,6 +56,10 @@ async function initSchema(db: Database) {
   try { await db.execute("ALTER TABLE invoices ADD COLUMN contract_id INTEGER"); } catch(e) {}
   try { await db.execute("ALTER TABLE invoices ADD COLUMN category TEXT DEFAULT ''"); } catch(e) {}
   try { await db.execute("ALTER TABLE invoices ADD COLUMN is_signed INTEGER DEFAULT 0"); } catch(e) {}
+  try { await db.execute("ALTER TABLE contracts ADD COLUMN source TEXT DEFAULT 'mine'"); } catch(e) {}
+  try { await db.execute("ALTER TABLE contracts ADD COLUMN file_path TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE invoices ADD COLUMN source TEXT DEFAULT 'mine'"); } catch(e) {}
+  try { await db.execute("ALTER TABLE invoices ADD COLUMN file_path TEXT DEFAULT ''"); } catch(e) {}
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS contracts (

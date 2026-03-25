@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye } from "lucide-react";
-import { getDb, peekInvoiceNumber, bumpInvoiceCounter } from "@/lib/db";
+import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye, Upload } from "lucide-react";
+import { getDb, peekInvoiceNumber, bumpInvoiceCounter, isTauri } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import type { Client, Invoice, InvoiceItem, OperatingMode } from "@/types";
+import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
+import { openPath } from "@tauri-apps/plugin-opener";
 
 type Status = Invoice["status"];
 
@@ -58,6 +60,8 @@ export default function Facturi() {
   const [items, setItems]       = useState<InvoiceItem[]>([emptyItem()]);
   const [notes, setNotes]       = useState("");
   const [status, setStatus]     = useState<Status>("draft");
+  const [source, setSource]     = useState<"mine" | "client">("mine");
+  const [filePath, setFilePath] = useState("");
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +103,7 @@ export default function Facturi() {
     setClientId(""); setContractId(""); setCategory(operatingMode === "dda" ? "Tranșă DDA" : ""); setIsSigned(false);
     setDate(today()); setDueDate(addDays(today(), 30));
     setItems([emptyItem()]); setNotes(""); setStatus("draft");
+    setSource("mine"); setFilePath("");
     setShowForm(true);
   };
 
@@ -107,7 +112,18 @@ export default function Facturi() {
     setClientId(inv.client_id); setContractId(inv.contract_id || ""); setCategory(inv.category || ""); setIsSigned(!!inv.is_signed);
     setDate(inv.date); setDueDate(inv.due_date);
     setItems(inv.items.length ? inv.items : [emptyItem()]); setNotes(inv.notes); setStatus(inv.status);
+    setSource(inv.source ?? "mine"); setFilePath(inv.file_path ?? "");
     setShowForm(true);
+  };
+
+  const pickInvoiceFile = async () => {
+    if (!isTauri()) { toast("Disponibil doar în aplicația desktop", "error"); return; }
+    const selected = await openFilePicker({
+      title: "Selectează documentul primit",
+      filters: [{ name: "Documente", extensions: ["pdf", "doc", "docx", "jpg", "jpeg", "png"] }],
+      multiple: false,
+    });
+    if (selected && typeof selected === "string") setFilePath(selected);
   };
 
   const updateItem = (i: number, field: keyof InvoiceItem, val: string | number) => {
@@ -126,15 +142,14 @@ export default function Facturi() {
     const db = await getDb();
     if (editing) {
       await db.execute(
-        "UPDATE invoices SET client_id=?,contract_id=?,date=?,due_date=?,items=?,total=?,status=?,notes=?,category=?,is_signed=? WHERE id=?",
-        [clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0, editing.id]
+        "UPDATE invoices SET client_id=?,contract_id=?,date=?,due_date=?,items=?,total=?,status=?,notes=?,category=?,is_signed=?,source=?,file_path=? WHERE id=?",
+        [clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0, source, filePath, editing.id]
       );
     } else {
-      // Peek number first — only bump counter after INSERT succeeds
       const number = await peekInvoiceNumber();
       await db.execute(
-        "INSERT INTO invoices(number,client_id,contract_id,date,due_date,items,total,status,notes,category,is_signed) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-        [number, clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0]
+        "INSERT INTO invoices(number,client_id,contract_id,date,due_date,items,total,status,notes,category,is_signed,source,file_path) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [number, clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0, source, filePath]
       );
       await bumpInvoiceCounter();
     }
@@ -205,6 +220,7 @@ export default function Facturi() {
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tx-1)", fontWeight: 500 }}>{inv.number}</span>
                     {inv.is_signed && <span style={{ fontSize: 10, color: "var(--green)", fontWeight: 600 }}>✓ Semnat PVR</span>}
+                    {inv.source === "client" && <span style={{ fontSize: 10, color: "var(--ac)", fontWeight: 600 }}>↓ De la client</span>}
                   </div>
                 </td>
                 <td style={{ color: "var(--tx-1)" }}>{getClient(inv)?.name || "—"}</td>
@@ -262,6 +278,50 @@ export default function Facturi() {
             </div>
 
             <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16, maxHeight: "70vh", overflowY: "auto" }}>
+
+              {/* Source toggle */}
+              <div>
+                <FieldLabel>Origine document</FieldLabel>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {(["mine", "client"] as const).map(s => (
+                    <button key={s} type="button" onClick={() => setSource(s)}
+                      style={{ flex: 1, padding: "6px 10px", borderRadius: "var(--r-md)", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.12s",
+                        background: source === s ? "var(--ac)" : "var(--bg-2)",
+                        color: source === s ? "#fff" : "var(--tx-2)",
+                        border: `1px solid ${source === s ? "var(--ac)" : "var(--border)"}` }}>
+                      {s === "mine"
+                        ? (operatingMode === "dda" ? "Emis de mine (PVR)" : "Emisă de mine")
+                        : (operatingMode === "dda" ? "Primit de la client" : "Primită de la client")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* File upload — only for client source */}
+              {source === "client" && (
+                <div>
+                  <FieldLabel>Fișier document</FieldLabel>
+                  {filePath ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
+                      <FileText size={14} color="var(--ac)" />
+                      <span style={{ flex: 1, fontSize: 12, color: "var(--tx-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {filePath.split(/[\\/]/).pop() || filePath}
+                      </span>
+                      <button type="button" onClick={() => setFilePath("")}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx-4)", display: "flex", padding: 2 }}>
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="btn btn-ghost" onClick={pickInvoiceFile}
+                      style={{ width: "100%", justifyContent: "center", padding: "14px", gap: 8, border: "1px dashed var(--border)" }}>
+                      <Upload size={14} />
+                      Selectează fișier (PDF / DOC / imagine)
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Client + Contract */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
@@ -407,33 +467,78 @@ export default function Facturi() {
         </div>
       )}
 
-      {/* ── Invoice Tipizat Preview ──────────────────────────────────────────────── */}
+      {/* ── Invoice / PVR Preview ───────────────────────────────────────────────── */}
       {previewInvoice && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setPreviewInvoice(null)}>
           <div className="modal" style={{ width: "min(860px, 96vw)", maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
             {/* Header */}
             <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-              <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 15, color: "var(--tx-1)" }}>
-                Preview: {previewInvoice.number}
-              </h3>
+              <div>
+                <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 15, color: "var(--tx-1)" }}>
+                  {previewInvoice.source === "client" ? "Document primit · " : "Preview · "}{previewInvoice.number}
+                </h3>
+                {previewInvoice.source === "client" && (
+                  <p style={{ fontSize: 11, color: "var(--tx-3)", marginTop: 2 }}>
+                    Document primit de la client — nu este generat de tine
+                  </p>
+                )}
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-primary" onClick={handlePrint}>
-                  <Printer size={13} strokeWidth={2.5} /> {operatingMode === "dda" ? "Printează PVR" : "Printează"}
-                </button>
+                {previewInvoice.source === "client" && previewInvoice.file_path && isTauri() && (
+                  <button className="btn btn-primary"
+                    onClick={() => openPath(previewInvoice.file_path!).catch(() => toast("Nu s-a putut deschide fișierul", "error"))}>
+                    <FileText size={13} strokeWidth={2.5} /> Deschide fișier
+                  </button>
+                )}
+                {previewInvoice.source !== "client" && (
+                  <button className="btn btn-primary" onClick={handlePrint}>
+                    <Printer size={13} strokeWidth={2.5} /> {operatingMode === "dda" ? "Printează PVR" : "Printează"}
+                  </button>
+                )}
                 <button onClick={() => setPreviewInvoice(null)} style={{ background: "var(--bg-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 6, color: "var(--tx-3)", display: "flex", cursor: "pointer" }}>
                   <X size={14} />
                 </button>
               </div>
             </div>
 
-            {/* Tipizat content */}
-            <div ref={printRef} className="print-frame" style={{ flex: 1, overflow: "auto", background: "#e8e8e8", padding: 24 }}>
-              {operatingMode === "dda" ? (
-                <PVRTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} contract={contracts.find(c => c.id === previewInvoice.contract_id)} />
-              ) : (
-                <InvoiceTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} operatingMode={operatingMode} />
-              )}
-            </div>
+            {/* Content */}
+            {previewInvoice.source === "client" ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 40 }}>
+                <FileText size={48} color="var(--ac)" style={{ opacity: 0.7 }} />
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--tx-1)", marginBottom: 6 }}>
+                    {previewInvoice.file_path
+                      ? (previewInvoice.file_path).split(/[\\/]/).pop()
+                      : "Niciun fișier atașat"}
+                  </div>
+                  {previewInvoice.file_path && (
+                    <div style={{ fontSize: 12, color: "var(--tx-3)", maxWidth: 500, wordBreak: "break-all" }}>
+                      {previewInvoice.file_path}
+                    </div>
+                  )}
+                </div>
+                {previewInvoice.notes && (
+                  <div style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "12px 16px", maxWidth: 500, width: "100%" }}>
+                    <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Note</div>
+                    <p style={{ fontSize: 13, color: "var(--tx-2)", margin: 0 }}>{previewInvoice.notes}</p>
+                  </div>
+                )}
+                {previewInvoice.file_path && isTauri() && (
+                  <button className="btn btn-primary" style={{ marginTop: 8 }}
+                    onClick={() => openPath(previewInvoice.file_path!).catch(() => toast("Nu s-a putut deschide fișierul", "error"))}>
+                    <FileText size={14} /> Deschide cu aplicația implicită
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div ref={printRef} className="print-frame" style={{ flex: 1, overflow: "auto", background: "#e8e8e8", padding: 24 }}>
+                {operatingMode === "dda" ? (
+                  <PVRTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} contract={contracts.find(c => c.id === previewInvoice.contract_id)} />
+                ) : (
+                  <InvoiceTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} operatingMode={operatingMode} />
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

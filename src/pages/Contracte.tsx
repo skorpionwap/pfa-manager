@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { Plus, X, Check, Trash2, FileSignature,
-  Sparkles, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+  Sparkles, Loader2, AlertTriangle, RefreshCw,
+  Eye, Printer, Upload, FileText } from "lucide-react";
 import LexicalEditor from "@/components/LexicalEditor";
 import { getDb, getSetting, isTauri } from "@/lib/db";
+import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
+import { openPath } from "@tauri-apps/plugin-opener";
 import { pickAndAnalyzeContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
 import { useToast } from "@/components/Toast";
 import type { Client, Contract, OperatingMode } from "@/types";
@@ -81,6 +84,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const empty = (): Omit<Contract, "id" | "created_at" | "client_name"> => ({
   client_id: null, type: "cesiune", number: "", date: today(),
   description: "", amount: 0, status: "activ", notes: "",
+  source: "mine", file_path: "",
 });
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -96,6 +100,7 @@ export default function Contracte() {
   const [analysisResult, setAnalysisResult] = useState<ContractAnalysis | null>(null);
   const [templateOpts, setTemplateOpts] = useState<TemplateOptions>(() => defaultTemplateOptions("cesiune"));
   const [editorContent, setEditorContent] = useState("");
+  const [viewContract, setViewContract] = useState<Contract | null>(null);
 
   const load = async () => {
     const db = await getDb();
@@ -165,24 +170,62 @@ export default function Contracte() {
     return vars;
   };
 
-  const openNew = () => {
+  const openNew = async () => {
     setEditing(null);
     const f = empty();
     f.type = mode === "dda" ? "cesiune" : "prestari";
     const opts = defaultTemplateOptions(f.type);
     setForm(f);
     setTemplateOpts(opts);
-    setEditorContent("");
+    // Auto-load template so the editor isn't blank on open
+    const vars = await loadVars(f.type, f.client_id, f, opts);
+    const html = substituteVars(TEMPLATE_HTML[f.type] ?? "", vars);
+    setEditorContent(html);
     setShowForm(true);
   };
 
   const openEdit = (c: Contract) => {
     setEditing(c);
     setForm({ client_id: c.client_id, type: c.type, number: c.number, date: c.date,
-              description: c.description, amount: c.amount, status: c.status, notes: c.notes });
+              description: c.description, amount: c.amount, status: c.status, notes: c.notes,
+              source: c.source ?? "mine", file_path: c.file_path ?? "" });
     setTemplateOpts(defaultTemplateOptions(c.type));
     setEditorContent(c.description || "");
     setShowForm(true);
+  };
+
+  const pickClientFile = async () => {
+    if (!isTauri()) { toast("Disponibil doar în aplicația desktop", "error"); return; }
+    const selected = await openFilePicker({
+      title: "Selectează documentul contractului",
+      filters: [{ name: "Documente", extensions: ["pdf", "doc", "docx"] }],
+      multiple: false,
+    });
+    if (selected && typeof selected === "string") {
+      setForm(f => ({ ...f, file_path: selected }));
+    }
+  };
+
+  const printContract = (html: string, number: string) => {
+    const w = window.open("", "_blank", "width=900,height=700");
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head><title>Contract ${number || ""}</title>
+<style>
+  body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; font-size: 11pt; line-height: 1.7; margin: 2.5cm; color: #111; }
+  h1 { font-size: 14pt; text-align: center; margin-bottom: 0.5em; }
+  h2 { font-size: 12pt; margin-top: 1.5em; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  h3 { font-size: 11pt; margin-top: 1em; }
+  p { margin: 0 0 0.8em; }
+  ul, ol { margin: 0 0 0.8em; padding-left: 1.5em; }
+  li { margin-bottom: 0.3em; }
+  table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+  td, th { border: 1px solid #555; padding: 6px 10px; font-size: 10pt; }
+  th { background: #eee; font-weight: bold; }
+  @media print { @page { margin: 1.5cm; } body { margin: 0; } }
+</style></head><body>${html}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
   };
 
   const applyTemplate = async (
@@ -203,15 +246,17 @@ export default function Contracte() {
     const isEmpty = !description || description === "<p></p>" || description.trim() === "";
     if (!editing && isEmpty) { toast("Conținutul contractului nu poate fi gol", "error"); return; }
     const db = await getDb();
+    const src = form.source ?? "mine";
+    const fp  = form.file_path ?? "";
     if (editing) {
       await db.execute(
-        "UPDATE contracts SET client_id=?,type=?,number=?,date=?,description=?,amount=?,status=?,notes=? WHERE id=?",
-        [form.client_id, form.type, form.number, form.date, description, form.amount, form.status, form.notes, editing.id]
+        "UPDATE contracts SET client_id=?,type=?,number=?,date=?,description=?,amount=?,status=?,notes=?,source=?,file_path=? WHERE id=?",
+        [form.client_id, form.type, form.number, form.date, description, form.amount, form.status, form.notes, src, fp, editing.id]
       );
     } else {
       await db.execute(
-        "INSERT INTO contracts(client_id,type,number,date,description,amount,status,notes) VALUES(?,?,?,?,?,?,?,?)",
-        [form.client_id, form.type, form.number, form.date, description, form.amount, form.status, form.notes]
+        "INSERT INTO contracts(client_id,type,number,date,description,amount,status,notes,source,file_path) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        [form.client_id, form.type, form.number, form.date, description, form.amount, form.status, form.notes, src, fp]
       );
     }
     setShowForm(false);
@@ -313,10 +358,13 @@ export default function Contracte() {
                 <td><span className={STATUS_BADGE[c.status]}>{STATUS_LABELS[c.status]}</span></td>
                 <td>
                   <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                    <button className="btn btn-ghost" style={{ padding: "5px 8px" }} onClick={() => openEdit(c)}>
+                    <button className="btn btn-ghost" style={{ padding: "5px 8px" }} title="Vizualizează" onClick={() => setViewContract(c)}>
+                      <Eye size={12} />
+                    </button>
+                    <button className="btn btn-ghost" style={{ padding: "5px 8px" }} title="Editează" onClick={() => openEdit(c)}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
-                    <button className="btn btn-danger-ghost" style={{ padding: "5px 8px" }} onClick={() => remove(c.id)}>
+                    <button className="btn btn-danger-ghost" style={{ padding: "5px 8px" }} title="Șterge" onClick={() => remove(c.id)}>
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -442,8 +490,26 @@ export default function Contracte() {
 
               {/* LEFT COLUMN */}
               <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)", overflow: "auto" }}>
-                {/* Type toggle */}
-                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-1)" }}>
+                {/* Source toggle */}
+                <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-1)" }}>
+                  <Label style={{ marginBottom: 6 }}>Origine contract</Label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {(["mine", "client"] as const).map(s => (
+                      <button key={s} type="button"
+                        onClick={() => setForm(f => ({ ...f, source: s }))}
+                        style={{ flex: 1, padding: "6px 10px", borderRadius: "var(--r-md)", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.12s",
+                          background: (form.source ?? "mine") === s ? "var(--ac)" : "var(--bg-2)",
+                          color: (form.source ?? "mine") === s ? "#fff" : "var(--tx-2)",
+                          border: `1px solid ${(form.source ?? "mine") === s ? "var(--ac)" : "var(--border)"}` }}>
+                        {s === "mine" ? "Creat de mine" : "Primit de la client"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Type toggle — only for own contracts */}
+                {(form.source ?? "mine") === "mine" && (
+                <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-1)" }}>
                   <div style={{ display: "flex", gap: 8 }}>
                     {(Object.entries(TYPE_LABELS) as [ContractType, string][])
                       .filter(([t]) => mode === "dda" ? t !== "prestari" : t === "prestari")
@@ -463,6 +529,7 @@ export default function Contracte() {
                     ))}
                   </div>
                 </div>
+                )}
 
                 {/* Fields */}
                 <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
@@ -502,13 +569,40 @@ export default function Contracte() {
                   </div>
                 </div>
 
-                {/* Template options */}
-                <TemplateOptionsPanel
-                  opts={templateOpts}
-                  onChange={setTemplateOpts}
-                  type={form.type}
-                  onRegenerate={() => applyTemplate(form.type, form.client_id, form, templateOpts)}
-                />
+                {/* Template options — only for own contracts */}
+                {(form.source ?? "mine") === "mine" && (
+                  <TemplateOptionsPanel
+                    opts={templateOpts}
+                    onChange={setTemplateOpts}
+                    type={form.type}
+                    onRegenerate={() => applyTemplate(form.type, form.client_id, form, templateOpts)}
+                  />
+                )}
+
+                {/* File attachment — only for client contracts */}
+                {(form.source ?? "mine") === "client" && (
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
+                    <Label>Document primit</Label>
+                    {form.file_path ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
+                        <FileText size={14} color="var(--ac)" />
+                        <span style={{ flex: 1, fontSize: 12, color: "var(--tx-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {(form.file_path || "").split(/[\\/]/).pop() || form.file_path}
+                        </span>
+                        <button type="button" onClick={() => setForm(f => ({ ...f, file_path: "" }))}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx-4)", display: "flex", padding: 2 }}>
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" className="btn btn-ghost" onClick={pickClientFile}
+                        style={{ width: "100%", justifyContent: "center", padding: "14px", gap: 8, border: "1px dashed var(--border)" }}>
+                        <Upload size={14} />
+                        Selectează fișier (PDF / DOC)
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Notes */}
                 <div style={{ padding: "16px 20px", flexShrink: 0 }}>
@@ -527,18 +621,127 @@ export default function Contracte() {
                 </div>
               </div>
 
-              {/* RIGHT COLUMN - Editor sidebar */}
+              {/* RIGHT COLUMN - Editor */}
               <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-0)", minWidth: 0 }}>
+                {(form.source ?? "mine") === "mine" && (
+                  <div style={{ padding: "8px 16px 4px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Conținut contract
+                    </span>
+                  </div>
+                )}
+                {(form.source ?? "mine") === "client" && (
+                  <div style={{ padding: "8px 16px 4px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Notițe / adnotări (opțional)
+                    </span>
+                  </div>
+                )}
                 <div style={{ flex: 1, padding: "12px 16px", display: "flex", flexDirection: "column", minHeight: 0 }}>
                   <LexicalEditor
                     value={editorContent}
                     onChange={setEditorContent}
-                    placeholder="Text contract..."
+                    placeholder={(form.source ?? "mine") === "client" ? "Adaugă notițe despre acest contract..." : "Text contract..."}
                     className="lexical-editor-wrap"
                   />
                 </div>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── View contract modal ───────────────────────────────────────────────── */}
+      {viewContract && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setViewContract(null)}>
+          <div className="modal" style={{ width: "min(860px, 96vw)", height: "90vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
+            {/* Header */}
+            <div style={{ padding: "16px 24px 12px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <div>
+                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 14, color: "var(--tx-1)" }}>
+                  {viewContract.number || `Contract #${viewContract.id}`}
+                </span>
+                <span style={{ marginLeft: 12, fontSize: 11, color: "var(--tx-3)" }}>{viewContract.date}</span>
+                {viewContract.client_name && (
+                  <span style={{ marginLeft: 12, fontSize: 11, color: "var(--tx-3)" }}>· {viewContract.client_name}</span>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {/* Print button — only if there's HTML content */}
+                {viewContract.description && (
+                  <button className="btn btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}
+                    onClick={() => printContract(viewContract.description, viewContract.number)}>
+                    <Printer size={13} /> Printează
+                  </button>
+                )}
+                {/* Open file button — only for client contracts with a file */}
+                {viewContract.file_path && isTauri() && (
+                  <button className="btn btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}
+                    onClick={() => openPath(viewContract.file_path!).catch(() => toast("Nu s-a putut deschide fișierul", "error"))}>
+                    <FileText size={13} /> Deschide fișier
+                  </button>
+                )}
+                <button onClick={() => setViewContract(null)} style={{ background: "var(--bg-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 6, color: "var(--tx-3)", display: "flex", cursor: "pointer" }}>
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Meta strip */}
+            <div style={{ padding: "10px 24px", borderBottom: "1px solid var(--border)", display: "flex", gap: 16, flexShrink: 0, background: "var(--bg-1)" }}>
+              <span className={TYPE_BADGE[viewContract.type]} style={{ fontSize: 11 }}>{TYPE_LABELS[viewContract.type]}</span>
+              <span className={STATUS_BADGE[viewContract.status]} style={{ fontSize: 11 }}>{STATUS_LABELS[viewContract.status]}</span>
+              {viewContract.amount > 0 && (
+                <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--tx-2)" }}>
+                  {viewContract.amount.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
+                </span>
+              )}
+              {viewContract.source === "client" && (
+                <span style={{ fontSize: 11, color: "var(--tx-3)", background: "var(--bg-2)", padding: "2px 8px", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
+                  Primit de la client
+                </span>
+              )}
+              {viewContract.file_path && (
+                <span style={{ fontSize: 11, color: "var(--tx-3)", display: "flex", alignItems: "center", gap: 4 }}>
+                  <FileText size={11} />
+                  {(viewContract.file_path).split(/[\\/]/).pop()}
+                </span>
+              )}
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflow: "auto", padding: "28px 40px" }}>
+              {viewContract.description ? (
+                <div
+                  className="contract-view-content"
+                  dangerouslySetInnerHTML={{ __html: viewContract.description }}
+                  style={{ maxWidth: 720, margin: "0 auto", lineHeight: 1.7 }}
+                />
+              ) : (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "var(--tx-4)" }}>
+                  <FileText size={32} style={{ margin: "0 auto 12px", display: "block", opacity: 0.3 }} />
+                  {viewContract.source === "client"
+                    ? "Nicio adnotare. Folosiți butonul «Deschide fișier» pentru a vedea documentul original."
+                    : "Contract fără conținut text salvat."}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "12px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <span style={{ fontSize: 11, color: "var(--tx-4)" }}>
+                Înregistrat: {viewContract.created_at?.slice(0, 10) || "—"}
+                {viewContract.notes && <> · <em>{viewContract.notes}</em></>}
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-ghost" onClick={() => { setViewContract(null); openEdit(viewContract); }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Editează
+                </button>
+                <button className="btn btn-ghost" onClick={() => setViewContract(null)}>Închide</button>
+              </div>
             </div>
           </div>
         </div>

@@ -491,7 +491,7 @@ interface LexicalEditorProps {
 function LexicalEditorInner({ value, onChange, placeholder = "Scrieți aici...", className }: LexicalEditorProps) {
   const [editor] = useLexicalComposerContext();
   const isExternalUpdate = useRef(false);
-  const lastEmittedHtml = useRef(value);
+  const lastEmittedHtml = useRef<string>("");
 
   // Sync external value changes to editor (only if different from what we last sent)
   useEffect(() => {

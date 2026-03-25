@@ -29,6 +29,8 @@ export interface Invoice {
   status: "draft" | "sent" | "paid" | "overdue";
   category?: string; // Added for DDA: Tranșă, Abonament, etc.
   is_signed?: boolean; // Added for DDA: PVR signature status
+  source?: "mine" | "client";
+  file_path?: string;
   notes: string;
   created_at: string;
 }
@@ -43,6 +45,8 @@ export interface Contract {
   description: string;
   amount: number;
   status: "activ" | "expirat" | "reziliat" | "pending";
+  source?: "mine" | "client";
+  file_path?: string;
   notes: string;
   created_at: string;
 }

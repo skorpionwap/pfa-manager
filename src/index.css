@@ -1002,3 +1002,17 @@ select.field option {
 [data-theme="ubuntu-light"] .sidebar-nav-item.active {
   box-shadow: inset 2px 0 0 var(--ac), 0 1px 4px rgba(46,52,54,0.12);
 }
+
+/* ── Contract view content ───────────────────────────────────────────────── */
+.contract-view-content { font-size: 13px; color: var(--tx-1); }
+.contract-view-content .editor-paragraph { margin: 0 0 10px; }
+.contract-view-content .editor-paragraph:last-child { margin-bottom: 0; }
+.contract-view-content .editor-heading-h1 { font-size: 20px; font-weight: 700; margin: 0 0 16px; }
+.contract-view-content .editor-heading-h2 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; }
+.contract-view-content .editor-heading-h3 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; }
+.contract-view-content .editor-list-ul,
+.contract-view-content .editor-list-ol { padding-left: 24px; margin: 0 0 10px; }
+.contract-view-content .editor-list-item { margin-bottom: 4px; }
+.contract-view-content .editor-quote { border-left: 3px solid var(--border); padding: 8px 16px; margin: 0 0 10px; color: var(--tx-3); font-style: italic; }
+.contract-view-content table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.contract-view-content td, .contract-view-content th { border: 1px solid var(--border); padding: 6px 10px; }
