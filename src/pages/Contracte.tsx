@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -116,6 +116,7 @@ const TEXT_COLORS = [
 
 function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
   const [showColors, setShowColors] = useState(false);
+  const savedSelection = useRef<{ from: number; to: number } | null>(null);
   if (!editor) return null;
   const btn = (active: boolean, onClick: () => void, label: React.ReactNode, title?: string) => (
     <button type="button" className={active ? "is-active" : ""} onClick={onClick} title={title}>{label}</button>
@@ -128,10 +129,18 @@ function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         className="tiptap-font-select"
         title="Font"
         value={editor.getAttributes("textStyle").fontFamily ?? ""}
+        onFocus={() => {
+          const { from, to } = editor.state.selection;
+          savedSelection.current = { from, to };
+        }}
         onChange={e => {
           const v = e.target.value;
+          if (savedSelection.current) {
+            editor.commands.setTextSelection(savedSelection.current);
+          }
           if (v) editor.chain().focus().setFontFamily(v).run();
           else editor.chain().focus().unsetFontFamily().run();
+          savedSelection.current = null;
         }}
       >
         {FONTS.map(f => (
