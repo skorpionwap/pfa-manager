@@ -722,32 +722,38 @@ select.field option {
   box-shadow: 3px 0 20px rgba(0,0,0,0.4);
 }
 
-/* ── Theme: Ubuntu Light "Parchment" ─────────────────────────────── */
+/* ── Theme: Ubuntu Light — Yaru 2026 ─────────────────────────────── */
 [data-theme="ubuntu-light"] .card {
-  background: #f4ede5;
-  box-shadow: 0 1px 3px rgba(100,70,40,0.08), 0 4px 16px rgba(100,70,40,0.07);
+  box-shadow: 0 1px 4px rgba(46,52,54,0.14), 0 6px 24px rgba(46,52,54,0.09);
 }
 [data-theme="ubuntu-light"] .modal {
-  background: #f4ede5;
-  box-shadow: 0 24px 80px rgba(80,50,20,0.22), 0 0 0 1px rgba(180,130,90,0.12);
+  box-shadow: 0 32px 96px rgba(46,52,54,0.30), 0 0 0 1px rgba(46,52,54,0.08);
 }
 [data-theme="ubuntu-light"] .modal-overlay {
-  background: rgba(40,25,10,0.45);
+  background: rgba(46,52,54,0.50);
 }
 [data-theme="ubuntu-light"] .toast {
-  background: #f4ede5;
-  box-shadow: 0 8px 32px rgba(80,50,20,0.18);
+  box-shadow: 0 8px 32px rgba(46,52,54,0.20);
 }
 [data-theme="ubuntu-light"] .sidebar {
-  box-shadow: 3px 0 16px rgba(100,70,40,0.1);
+  box-shadow: 3px 0 24px rgba(46,52,54,0.18);
 }
 [data-theme="ubuntu-light"] .search-modal {
-  background: #f4ede5;
-  box-shadow: 0 24px 80px rgba(80,50,20,0.22);
+  box-shadow: 0 24px 80px rgba(46,52,54,0.28);
 }
 [data-theme="ubuntu-light"] .btn-ghost {
   border-color: var(--border-md);
 }
 [data-theme="ubuntu-light"] select.field {
   background-color: var(--bg-1);
+}
+[data-theme="ubuntu-light"] .field {
+  background: var(--bg-base);
+  box-shadow: inset 0 1px 3px rgba(46,52,54,0.10);
+}
+[data-theme="ubuntu-light"] .data-table tr:hover td {
+  background: var(--bg-hover);
+}
+[data-theme="ubuntu-light"] .sidebar-nav-item.active {
+  box-shadow: inset 2px 0 0 var(--ac), 0 1px 4px rgba(46,52,54,0.12);
 }

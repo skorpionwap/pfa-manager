@@ -42,38 +42,39 @@ export const THEMES: Theme[] = [
     },
   },
 
-  // ── Ubuntu Light — Yaru (exact) ──────────────────────────────────
-  // $light_bg_color=#FAFAFA, text=$inkstone=#3D3D3D, orange #E95420
-  // Source: ubuntu/yaru gtk/src/default/gtk-3.0/_colors.scss + _palette.scss
+  // ── Ubuntu Light — Yaru 2025/26 (authentic) ──────────────────────
+  // $bg_color=#f6f5f4 (gri cald Yaru), $text_color=#2e3436, orange #E95420
+  // Yaru 25.04/25.10: fondul ferestrei este #f6f5f4, cardurile ridicate spre #fff
+  // borders: darken($bg_color, 18%) ≈ #c5c3c2
 
   {
     id: "ubuntu-light",
     name: "Ubuntu Light",
-    description: "Yaru light — alb cald, portocaliu Ubuntu",
-    preview: { bg: "#fafafa", ac: "#e95420", border: "#c8c8c8", text: "#3d3d3d" },
+    description: "Yaru 2026 — gri cald autentic, portocaliu Ubuntu, umbre reale",
+    preview: { bg: "#f6f5f4", ac: "#e95420", border: "#c5c3c2", text: "#2e3436" },
     vars: {
-      "--sidebar-bg": "#d5d0ce",        // mix(bg, base, 50%) darkened for sidebar
-      "--bg-base": "#fafafa",           // $light_bg_color
-      "--bg-1": "#f3f3f3",
-      "--bg-2": "#ebebeb",
-      "--bg-3": "#e0e0e0",
-      "--bg-hover": "#d6d6d6",
-      "--border": "#c8c8c8",            // darken(#fafafa, 20%)
-      "--border-md": "#b5b5b5",
-      "--border-hi": "#9e9e9e",
-      "--border-light": "#f0f0f0",
-      "--tx-1": "#3d3d3d",              // $inkstone
-      "--tx-2": "#5d5d5d",              // $slate
-      "--tx-3": "#878787",              // $ash
-      "--tx-4": "#aea79f",              // $warm_gray
-      "--ac": "#e95420",                // $orange
-      "--ac-hover": "#c24418",
-      "--ac-dim": "rgba(233,84,32,0.10)", "--ac-glow": "rgba(233,84,32,0.22)",
-      "--btn-text": "#ffffff",
-      "--green": "#16803d", "--green-dim": "rgba(22,128,61,0.10)",
-      "--red": "#dc2626", "--red-dim": "rgba(220,38,38,0.08)",
-      "--blue": "#1d4ed8", "--blue-dim": "rgba(29,78,216,0.09)",
-      "--amber": "#b45309", "--amber-dim": "rgba(180,83,9,0.09)",
+      "--sidebar-bg":    "#d8d3cd",     // panel lateral — distinct mai închis, cald
+      "--bg-base":       "#f6f5f4",     // $bg_color Yaru — gri cald, fondul ferestrei
+      "--bg-1":          "#f0eeeb",     // ușor mai adânc
+      "--bg-2":          "#e9e5e0",     // carduri, suprafețe
+      "--bg-3":          "#e1dbd5",     // hover, elemente adânci
+      "--bg-hover":      "#d9d2cb",
+      "--border":        "#c5c3c2",     // darken(#f6f5f4, 18%) — Yaru exact
+      "--border-md":     "#b5b2af",
+      "--border-hi":     "#a09d9a",
+      "--border-light":  "#ede9e5",
+      "--tx-1":          "#2e3436",     // $text_color Yaru — negru cald profund
+      "--tx-2":          "#4e5456",
+      "--tx-3":          "#8c9295",
+      "--tx-4":          "#adb2b5",
+      "--ac":            "#e95420",     // $orange Ubuntu — neschimbat
+      "--ac-hover":      "#c94619",
+      "--ac-dim":        "rgba(233,84,32,0.13)", "--ac-glow": "rgba(233,84,32,0.28)",
+      "--btn-text":      "#ffffff",
+      "--green":         "#1a7a40", "--green-dim": "rgba(26,122,64,0.12)",
+      "--red":           "#c82020", "--red-dim":   "rgba(200,32,32,0.10)",
+      "--blue":          "#1a56c4", "--blue-dim":  "rgba(26,86,196,0.10)",
+      "--amber":         "#a05010", "--amber-dim": "rgba(160,80,16,0.10)",
     },
   },
 
