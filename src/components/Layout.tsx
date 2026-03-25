@@ -68,14 +68,15 @@ export default function Layout() {
         {/* Logo */}
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-              <rect x="1" y="1" width="6" height="6" rx="1.5" fill="var(--ac)" />
-              <rect x="8" y="1" width="6" height="6" rx="1.5" fill="var(--ac)" opacity="0.35" />
-              <rect x="1" y="8" width="6" height="6" rx="1.5" fill="var(--ac)" opacity="0.35" />
-              <rect x="8" y="8" width="6" height="6" rx="1.5" fill="var(--ac)" opacity="0.7" />
+            <svg width="26" height="26" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="512" height="512" rx="112" fill="#181818"/>
+              <rect x="88"  y="88"  width="148" height="148" rx="32" fill="#e95420"/>
+              <rect x="276" y="88"  width="148" height="148" rx="32" fill="#e95420" opacity="0.35"/>
+              <rect x="88"  y="276" width="148" height="148" rx="32" fill="#e95420" opacity="0.35"/>
+              <rect x="276" y="276" width="148" height="148" rx="32" fill="#e95420" opacity="0.75"/>
             </svg>
           </div>
-          <span className="sidebar-logo-text">PFA Manager</span>
+          <span className="sidebar-logo-text">Libero</span>
         </div>
 
         {/* Mode badge */}
