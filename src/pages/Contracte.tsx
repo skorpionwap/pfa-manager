@@ -6,7 +6,7 @@ import LexicalEditor from "@/components/LexicalEditor";
 import { getDb, getSetting, isTauri } from "@/lib/db";
 import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { pickAndAnalyzeContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
+import { pickAndAnalyzeContract, analyzeClientContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
 import { useToast } from "@/components/Toast";
 import type { Client, Contract, OperatingMode } from "@/types";
 import { TEMPLATE_HTML, substituteVars, generateTranseTable } from "@/lib/templates";
@@ -201,8 +201,44 @@ export default function Contracte() {
       filters: [{ name: "Documente", extensions: ["pdf", "doc", "docx"] }],
       multiple: false,
     });
-    if (selected && typeof selected === "string") {
-      setForm(f => ({ ...f, file_path: selected }));
+    if (!selected || typeof selected !== "string") return;
+
+    setForm(f => ({ ...f, file_path: selected }));
+
+    // Auto-extract with Gemini (silently skips if no API key)
+    setAnalyzeLoading(true);
+    try {
+      const analysis = await analyzeClientContract(selected);
+
+      // Try to match client from extracted parties
+      const nameHint = analysis.parti.beneficiar || analysis.parti.prestator;
+      const matchedClient = nameHint
+        ? clients.find(c =>
+            c.name.toLowerCase().includes(nameHint.toLowerCase()) ||
+            nameHint.toLowerCase().includes(c.name.toLowerCase()))
+        : undefined;
+
+      setForm(f => ({
+        ...f,
+        file_path: selected,
+        number:    analysis.numar  || f.number,
+        date:      analysis.data   || f.date,
+        amount:    analysis.valoare > 0 ? analysis.valoare : f.amount,
+        client_id: matchedClient?.id ?? f.client_id,
+        notes:     analysis.riscuri.length > 0
+          ? `⚠ ${analysis.riscuri.length} clauze atenționare detectate de Gemini.${f.notes ? " " + f.notes : ""}`
+          : f.notes,
+      }));
+
+      if (analysis.riscuri.length > 0) {
+        setAnalysisResult(analysis);  // deschide modalul de riscuri existent
+      } else {
+        toast("Date extrase automat de Gemini ✓", "success");
+      }
+    } catch {
+      toast("Fișier selectat. Adaugă cheia Gemini în Setări pentru extracție automată.", "info");
+    } finally {
+      setAnalyzeLoading(false);
     }
   };
 
@@ -583,12 +619,21 @@ export default function Contracte() {
                 {(form.source ?? "mine") === "client" && (
                   <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
                     <Label>Document primit</Label>
-                    {form.file_path ? (
+                    {analyzeLoading ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)", color: "var(--tx-3)", fontSize: 12 }}>
+                        <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: "var(--ac)" }} />
+                        Gemini extrage datele...
+                      </div>
+                    ) : form.file_path ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
                         <FileText size={14} color="var(--ac)" />
                         <span style={{ flex: 1, fontSize: 12, color: "var(--tx-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {(form.file_path || "").split(/[\\/]/).pop() || form.file_path}
                         </span>
+                        <button type="button" onClick={pickClientFile}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx-3)", display: "flex", padding: 2, fontSize: 10 }} title="Schimbă fișierul">
+                          <Upload size={11} />
+                        </button>
                         <button type="button" onClick={() => setForm(f => ({ ...f, file_path: "" }))}
                           style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx-4)", display: "flex", padding: 2 }}>
                           <X size={12} />
@@ -598,7 +643,7 @@ export default function Contracte() {
                       <button type="button" className="btn btn-ghost" onClick={pickClientFile}
                         style={{ width: "100%", justifyContent: "center", padding: "14px", gap: 8, border: "1px dashed var(--border)" }}>
                         <Upload size={14} />
-                        Selectează fișier (PDF / DOC)
+                        Selectează fișier · Gemini extrage automat datele
                       </button>
                     )}
                   </div>

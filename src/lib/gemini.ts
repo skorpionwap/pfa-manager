@@ -122,6 +122,40 @@ Verifică în special:
 - Reziliere unilaterală fără compensație → risc ridicat
 - Drept de audit intruziv sau acces nerestricționat la sisteme → risc mediu`;
 
+// ── Document analysis from a known file path (no picker) ─────────────────────
+
+export async function analyzeClientContract(filePath: string): Promise<ContractAnalysis> {
+  const [apiKey, model] = await Promise.all([getApiKey(), getModel()]);
+  const raw = await invoke<string>("analyze_file", { apiKey, model, filePath, prompt: CONTRACT_ANALYSIS_PROMPT });
+  return JSON.parse(stripJsonFences(raw));
+}
+
+export interface ExtractedInvoice {
+  numar: string;
+  data: string;        // YYYY-MM-DD
+  total: number;
+  emitent: string;     // company/person that issued the document
+  descriere: string;   // short description of services/goods
+  tip: "factura" | "pvr" | "bon" | "altul";
+}
+
+const INVOICE_ANALYSIS_PROMPT = `Ești un asistent contabil român. Analizează documentul financiar atașat (factură, proces-verbal de recepție, bon, sau alt document financiar) și returnează EXCLUSIV un JSON valid, fără text suplimentar sau markdown:
+
+{
+  "numar": "numărul documentului sau string gol dacă nu există",
+  "data": "YYYY-MM-DD (data emiterii; string gol dacă nu există)",
+  "total": număr în RON fără simbol valoric (ex: 5000.00) sau 0 dacă nu există,
+  "emitent": "numele companiei sau persoanei care a emis documentul",
+  "descriere": "descriere scurtă a serviciilor/bunurilor facturate, max 120 caractere",
+  "tip": "factura" sau "pvr" sau "bon" sau "altul"
+}`;
+
+export async function analyzeClientInvoice(filePath: string): Promise<ExtractedInvoice> {
+  const [apiKey, model] = await Promise.all([getApiKey(), getModel()]);
+  const raw = await invoke<string>("analyze_file", { apiKey, model, filePath, prompt: INVOICE_ANALYSIS_PROMPT });
+  return JSON.parse(stripJsonFences(raw));
+}
+
 export async function pickAndAnalyzeContract(): Promise<{ filePath: string; analysis: ContractAnalysis } | null> {
   const apiKey = await getApiKey();
   const selected = await open({

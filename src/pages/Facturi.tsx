@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye, Upload } from "lucide-react";
+import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye, Upload, Loader2 } from "lucide-react";
 import { getDb, peekInvoiceNumber, bumpInvoiceCounter, isTauri } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import type { Client, Invoice, InvoiceItem, OperatingMode } from "@/types";
 import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
+import { analyzeClientInvoice } from "@/lib/gemini";
 
 type Status = Invoice["status"];
 
@@ -60,8 +61,9 @@ export default function Facturi() {
   const [items, setItems]       = useState<InvoiceItem[]>([emptyItem()]);
   const [notes, setNotes]       = useState("");
   const [status, setStatus]     = useState<Status>("draft");
-  const [source, setSource]     = useState<"mine" | "client">("mine");
-  const [filePath, setFilePath] = useState("");
+  const [source, setSource]       = useState<"mine" | "client">("mine");
+  const [filePath, setFilePath]   = useState("");
+  const [analyzeLoading, setAnalyzeLoading] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +125,42 @@ export default function Facturi() {
       filters: [{ name: "Documente", extensions: ["pdf", "doc", "docx", "jpg", "jpeg", "png"] }],
       multiple: false,
     });
-    if (selected && typeof selected === "string") setFilePath(selected);
+    if (!selected || typeof selected !== "string") return;
+
+    setFilePath(selected);
+
+    // Auto-extract with Gemini
+    setAnalyzeLoading(true);
+    try {
+      const extracted = await analyzeClientInvoice(selected);
+
+      // Try to match client by emitent name
+      const matchedClient = extracted.emitent
+        ? clients.find(c =>
+            c.name.toLowerCase().includes(extracted.emitent.toLowerCase()) ||
+            extracted.emitent.toLowerCase().includes(c.name.toLowerCase()))
+        : undefined;
+
+      if (extracted.data) setDate(extracted.data);
+      if (extracted.descriere) setNotes(extracted.descriere);
+      if (matchedClient) setClientId(matchedClient.id);
+
+      // Populate items only if still at default empty state
+      setItems(prev => {
+        const isDefault = prev.length === 1 && !prev[0].description && !prev[0].unit_price;
+        if (extracted.total > 0 && isDefault) {
+          const desc = extracted.descriere || (extracted.tip === "pvr" ? "Proces-verbal recepție" : "Servicii prestate");
+          return [{ description: desc, quantity: 1, unit_price: extracted.total, total: extracted.total }];
+        }
+        return prev;
+      });
+
+      toast(`Date extrase automat ✓${matchedClient ? ` · Client: ${matchedClient.name}` : ""}`, "success");
+    } catch {
+      toast("Fișier selectat. Adaugă cheia Gemini în Setări pentru extracție automată.", "info");
+    } finally {
+      setAnalyzeLoading(false);
+    }
   };
 
   const updateItem = (i: number, field: keyof InvoiceItem, val: string | number) => {
@@ -301,12 +338,21 @@ export default function Facturi() {
               {source === "client" && (
                 <div>
                   <FieldLabel>Fișier document</FieldLabel>
-                  {filePath ? (
+                  {analyzeLoading ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)", color: "var(--tx-3)", fontSize: 12 }}>
+                      <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: "var(--ac)" }} />
+                      Gemini extrage datele...
+                    </div>
+                  ) : filePath ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
                       <FileText size={14} color="var(--ac)" />
                       <span style={{ flex: 1, fontSize: 12, color: "var(--tx-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {filePath.split(/[\\/]/).pop() || filePath}
                       </span>
+                      <button type="button" onClick={pickInvoiceFile}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx-3)", display: "flex", padding: 2 }} title="Schimbă fișierul">
+                        <Upload size={11} />
+                      </button>
                       <button type="button" onClick={() => setFilePath("")}
                         style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx-4)", display: "flex", padding: 2 }}>
                         <X size={12} />
@@ -316,7 +362,7 @@ export default function Facturi() {
                     <button type="button" className="btn btn-ghost" onClick={pickInvoiceFile}
                       style={{ width: "100%", justifyContent: "center", padding: "14px", gap: 8, border: "1px dashed var(--border)" }}>
                       <Upload size={14} />
-                      Selectează fișier (PDF / DOC / imagine)
+                      Selectează fișier · Gemini extrage automat datele
                     </button>
                   )}
                 </div>
