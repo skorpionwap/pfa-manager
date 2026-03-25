@@ -1,7 +1,7 @@
 [package]
-name = "pfa-manager"
+name = "libero"
 version = "0.1.0"
-description = "A Tauri App"
+description = "Libero — gestiune profesionistă independentă"
 authors = ["you"]
 edition = "2021"
 

@@ -415,7 +415,7 @@ export default function Raport() {
 
                 {/* Footer */}
                 <div style={{ marginTop: 32, paddingTop: 12, borderTop: "1px solid #ccc", fontSize: 9, color: "#999", textAlign: "center" }}>
-                  Generat la {new Date().toLocaleDateString("ro-RO")} &middot; PFA Manager
+                  Generat la {new Date().toLocaleDateString("ro-RO")} &middot; Libero
                 </div>
               </div>
             </div>

@@ -42,7 +42,7 @@ export default function GeminiSidebar({
       );
       const clients = await db.select<{ count: number }[]>("SELECT COUNT(*) as count FROM clients");
 
-      return `Ești un asistent inteligent integrat în aplicația "PFA Manager" a utilizatorului. 
+      return `Ești un asistent inteligent integrat în aplicația "Libero" a utilizatorului.
 Utilizatorul operează în mod ${mode === 'dda' ? 'Drepturi de Autor (DDA)' : 'PFA'}.
 Statistici curente pe anul ${an}:
 - Venituri încasate: ${invoices[0]?.total?.toLocaleString("ro-RO") || 0} RON (${invoices[0]?.count || 0} facturi)

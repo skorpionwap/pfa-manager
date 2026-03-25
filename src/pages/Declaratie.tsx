@@ -349,7 +349,7 @@ export default function Declaratie() {
                 </div>
 
                 <div style={{ marginTop: 32, paddingTop: 12, borderTop: "1px solid #ccc", fontSize: 9, color: "#999", textAlign: "center" }}>
-                  Document informativ &middot; Generat la {new Date().toLocaleDateString("ro-RO")} &middot; PFA Manager
+                  Document informativ &middot; Generat la {new Date().toLocaleDateString("ro-RO")} &middot; Libero
                 </div>
               </div>
             </div>
