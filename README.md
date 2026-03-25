@@ -27,7 +27,7 @@ Modul se configurează din **Setări** și influențează calculele fiscale, cat
 - **Frontend:** React 19, TypeScript, Vite, React Router 7
 - **Desktop:** Tauri 2 (Rust)
 - **Baza de date:** SQLite (local, `pfa.db`)
-- **Editor contracte:** TipTap
+- **Editor contracte:** Lexical
 - **Grafice:** Recharts
 - **AI:** Google Gemini API
 

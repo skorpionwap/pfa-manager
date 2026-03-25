@@ -75,7 +75,7 @@ Components that need to react to settings changes listen for this event in `useE
 
 ## Contract Templates
 
-`src/lib/templates.ts` has three HTML templates: `cesiune`, `cesiune_abonament`, `prestari`. Templates use `{{PLACEHOLDER}}` syntax filled from settings and the contract form. The TipTap editor renders the resulting HTML for final editing before saving.
+`src/lib/templates.ts` has three HTML templates: `cesiune`, `cesiune_abonament`, `prestari`. Templates use `{{PLACEHOLDER}}` syntax filled from settings and the contract form. The Lexical editor renders the resulting HTML for final editing before saving.
 
 ## Theming
 
