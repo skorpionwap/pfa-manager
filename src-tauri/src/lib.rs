@@ -1,41 +1,6 @@
 use base64::{engine::general_purpose, Engine as _};
 use std::fs;
 
-// ── Gemini request structs ────────────────────────────────────────────────────
-
-#[derive(serde::Serialize)]
-struct GeminiPart {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    text: Option<String>,
-    #[serde(rename = "inlineData", skip_serializing_if = "Option::is_none")]
-    inline_data: Option<GeminiInlineData>,
-}
-
-#[derive(serde::Serialize)]
-struct GeminiInlineData {
-    #[serde(rename = "mimeType")]
-    mime_type: String,
-    data: String,
-}
-
-#[derive(serde::Serialize)]
-struct GeminiContent {
-    parts: Vec<GeminiPart>,
-}
-
-#[derive(serde::Serialize)]
-struct GeminiRequest {
-    contents: Vec<GeminiContent>,
-    #[serde(rename = "generationConfig")]
-    generation_config: GeminiGenerationConfig,
-}
-
-#[derive(serde::Serialize)]
-struct GeminiGenerationConfig {
-    #[serde(rename = "responseMimeType")]
-    response_mime_type: String,
-}
-
 // ── Model list structs ────────────────────────────────────────────────────────
 
 #[derive(serde::Serialize)]

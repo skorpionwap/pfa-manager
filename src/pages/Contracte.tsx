@@ -2,8 +2,15 @@ import { useEffect, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
+import TextAlign from "@tiptap/extension-text-align";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import FontFamily from "@tiptap/extension-font-family";
 import { Plus, X, Check, Trash2, FileSignature, Bold, Italic,
-  Underline as UnderlineIcon, List, ListOrdered, Minus, Sparkles, Loader2, AlertTriangle } from "lucide-react";
+  Underline as UnderlineIcon, Strikethrough, List, ListOrdered, Minus,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  Quote, Code, Palette,
+  Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { getDb, getSetting, isTauri } from "@/lib/db";
 import { pickAndAnalyzeContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
 import { useToast } from "@/components/Toast";
@@ -86,25 +93,108 @@ const empty = (): Omit<Contract, "id" | "created_at" | "client_name"> => ({
 });
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
+const FONTS = [
+  { value: "",                              label: "Implicit" },
+  { value: "Palatino Linotype, Palatino, serif", label: "Palatino" },
+  { value: "Georgia, serif",                label: "Georgia" },
+  { value: "Times New Roman, serif",        label: "Times New Roman" },
+  { value: "Arial, sans-serif",             label: "Arial" },
+  { value: "Helvetica, sans-serif",         label: "Helvetica" },
+  { value: "Courier New, monospace",        label: "Courier New" },
+];
+
+const TEXT_COLORS = [
+  { value: "#000000", label: "Negru" },
+  { value: "#374151", label: "Gri închis" },
+  { value: "#6b7280", label: "Gri" },
+  { value: "#dc2626", label: "Roșu" },
+  { value: "#2563eb", label: "Albastru" },
+  { value: "#16a34a", label: "Verde" },
+  { value: "#d97706", label: "Portocaliu" },
+  { value: "#7c3aed", label: "Violet" },
+];
+
 function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+  const [showColors, setShowColors] = useState(false);
   if (!editor) return null;
   const btn = (active: boolean, onClick: () => void, label: React.ReactNode, title?: string) => (
     <button type="button" className={active ? "is-active" : ""} onClick={onClick} title={title}>{label}</button>
   );
+  const currentColor = editor.getAttributes("textStyle").color as string | undefined;
   return (
     <div className="tiptap-toolbar">
-      {btn(editor.isActive("bold"),      () => editor.chain().focus().toggleBold().run(),      <Bold size={12} />, "Bold (Ctrl+B)")}
-      {btn(editor.isActive("italic"),    () => editor.chain().focus().toggleItalic().run(),    <Italic size={12} />, "Italic (Ctrl+I)")}
-      {btn(editor.isActive("underline"), () => editor.chain().focus().toggleUnderline().run(), <UnderlineIcon size={12} />, "Underline (Ctrl+U)")}
+      {/* Font family */}
+      <select
+        className="tiptap-font-select"
+        title="Font"
+        value={editor.getAttributes("textStyle").fontFamily ?? ""}
+        onChange={e => {
+          const v = e.target.value;
+          if (v) editor.chain().focus().setFontFamily(v).run();
+          else editor.chain().focus().unsetFontFamily().run();
+        }}
+      >
+        {FONTS.map(f => (
+          <option key={f.value} value={f.value} style={{ fontFamily: f.value || "inherit" }}>
+            {f.label}
+          </option>
+        ))}
+      </select>
       <div className="sep" />
+      {/* Formatting */}
+      {btn(editor.isActive("bold"),        () => editor.chain().focus().toggleBold().run(),        <Bold size={12} />, "Bold (Ctrl+B)")}
+      {btn(editor.isActive("italic"),      () => editor.chain().focus().toggleItalic().run(),      <Italic size={12} />, "Italic (Ctrl+I)")}
+      {btn(editor.isActive("underline"),   () => editor.chain().focus().toggleUnderline().run(),   <UnderlineIcon size={12} />, "Underline (Ctrl+U)")}
+      {btn(editor.isActive("strike"),      () => editor.chain().focus().toggleStrike().run(),      <Strikethrough size={12} />, "Tăiat")}
+      <div className="sep" />
+      {/* Headings */}
       {btn(editor.isActive("heading", { level: 1 }), () => editor.chain().focus().toggleHeading({ level: 1 }).run(), "H1")}
       {btn(editor.isActive("heading", { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), "H2")}
       {btn(editor.isActive("heading", { level: 3 }), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), "H3")}
       <div className="sep" />
-      {btn(editor.isActive("bulletList"),  () => editor.chain().focus().toggleBulletList().run(),  <List size={12} />, "Bullet list")}
-      {btn(editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run(), <ListOrdered size={12} />, "Numbered list")}
+      {/* Alignment */}
+      {btn(editor.isActive({ textAlign: "left" }),    () => editor.chain().focus().setTextAlign("left").run(),    <AlignLeft size={12} />, "Aliniere stânga")}
+      {btn(editor.isActive({ textAlign: "center" }),  () => editor.chain().focus().setTextAlign("center").run(),  <AlignCenter size={12} />, "Centrat")}
+      {btn(editor.isActive({ textAlign: "right" }),   () => editor.chain().focus().setTextAlign("right").run(),   <AlignRight size={12} />, "Aliniere dreapta")}
+      {btn(editor.isActive({ textAlign: "justify" }), () => editor.chain().focus().setTextAlign("justify").run(), <AlignJustify size={12} />, "Justified")}
       <div className="sep" />
+      {/* Lists */}
+      {btn(editor.isActive("bulletList"),  () => editor.chain().focus().toggleBulletList().run(),  <List size={12} />, "Listă puncte")}
+      {btn(editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run(), <ListOrdered size={12} />, "Listă numerotată")}
+      <div className="sep" />
+      {/* Block types */}
+      {btn(editor.isActive("blockquote"), () => editor.chain().focus().toggleBlockquote().run(), <Quote size={12} />, "Citat")}
+      {btn(editor.isActive("code"),       () => editor.chain().focus().toggleCode().run(),       <Code size={12} />, "Cod inline")}
       {btn(false, () => editor.chain().focus().setHorizontalRule().run(), <Minus size={12} />, "Separator")}
+      <div className="sep" />
+      {/* Color picker */}
+      <div style={{ position: "relative" }}>
+        <button type="button" title="Culoare text" onClick={() => setShowColors(v => !v)}
+          style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <Palette size={12} />
+          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2,
+            background: currentColor ?? "var(--tx-1)", border: "1px solid var(--border)" }} />
+        </button>
+        {showColors && (
+          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
+            background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)",
+            padding: 8, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, width: 120 }}>
+            {TEXT_COLORS.map(c => (
+              <button key={c.value} type="button" title={c.label}
+                onClick={() => { editor.chain().focus().setColor(c.value).run(); setShowColors(false); }}
+                style={{ width: 20, height: 20, borderRadius: 4, background: c.value,
+                  border: currentColor === c.value ? "2px solid var(--ac)" : "1px solid var(--border)",
+                  cursor: "pointer", padding: 0 }} />
+            ))}
+            <button type="button" title="Culoare implicită"
+              onClick={() => { editor.chain().focus().unsetColor().run(); setShowColors(false); }}
+              style={{ width: 20, height: 20, borderRadius: 4, background: "var(--bg-base)",
+                border: "1px solid var(--border)", cursor: "pointer", fontSize: 10, color: "var(--tx-3)" }}>
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -123,7 +213,14 @@ export default function Contracte() {
   const [templateOpts, setTemplateOpts] = useState<TemplateOptions>(() => defaultTemplateOptions("cesiune"));
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    extensions: [
+      StarterKit,
+      Underline,
+      TextStyle,
+      Color,
+      FontFamily,
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+    ],
     content: "",
     editorProps: { attributes: { spellcheck: "false" } },
   });

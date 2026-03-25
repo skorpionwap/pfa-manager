@@ -245,6 +245,14 @@ select.field option {
   background: var(--bg-base);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+/* EditorContent wrapper div — needs to flex-fill its parent */
+.tiptap-wrap > *:not(.tiptap-toolbar) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .tiptap-wrap:focus-within {
   border-color: var(--ac);
@@ -277,11 +285,24 @@ select.field option {
 .tiptap-toolbar button:hover { background: var(--bg-3); color: var(--tx-1); }
 .tiptap-toolbar button.is-active { background: var(--ac-dim); color: var(--ac); border-color: var(--ac-glow); }
 .tiptap-toolbar .sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+.tiptap-font-select {
+  font-size: 11px;
+  font-family: var(--font-ui);
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  color: var(--tx-2);
+  cursor: pointer;
+  height: 24px;
+  max-width: 110px;
+}
+.tiptap-font-select:focus { outline: none; border-color: var(--ac); }
 
 .ProseMirror {
   padding: 14px 16px;
-  min-height: 200px;
-  max-height: 48vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   outline: none;
   color: var(--tx-1);
@@ -309,6 +330,24 @@ select.field option {
 .ProseMirror ul, .ProseMirror ol { padding-left: 20px; margin: 0 0 8px; color: var(--tx-2); }
 .ProseMirror li { margin-bottom: 3px; }
 .ProseMirror hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+.ProseMirror blockquote {
+  border-left: 3px solid var(--ac);
+  padding: 6px 12px;
+  margin: 8px 0;
+  color: var(--tx-3);
+  font-style: italic;
+  background: var(--bg-1);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.ProseMirror code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+  color: var(--ac);
+}
 .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: var(--tx-4); pointer-events: none; float: left; height: 0;
