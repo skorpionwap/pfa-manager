@@ -101,16 +101,16 @@ const FONTS = [
 ];
 
 const TEXT_COLORS = [
-  { value: "#ffffff", label: "Alb" },
-  { value: "#f3f4f6", label: "Gri foarte deschis" },
-  { value: "#d1d5db", label: "Gri deschis" },
-  { value: "#9ca3af", label: "Gri" },
-  { value: "#ef4444", label: "Roșu" },
-  { value: "#3b82f6", label: "Albastru" },
-  { value: "#22c55e", label: "Verde" },
-  { value: "#eab308", label: "Galben" },
-  { value: "#a855f7", label: "Violet" },
-  { value: "#f97316", label: "Portocaliu" },
+  { value: "#000000", label: "Negru" },
+  { value: "#334155", label: "Gri închis" },
+  { value: "#475569", label: "Gri" },
+  { value: "#dc2626", label: "Roșu" },
+  { value: "#2563eb", label: "Albastru" },
+  { value: "#16a34a", label: "Verde" },
+  { value: "#d97706", label: "Galben aurit" },
+  { value: "#9333ea", label: "Violet" },
+  { value: "#ea580c", label: "Portocaliu" },
+  { value: "#0891b2", label: "Cian" },
 ];
 
 // ── Toolbar Component ───────────────────────────────────────────────────────────
@@ -419,9 +419,10 @@ function Toolbar() {
           className={`toolbar-btn ${showColorPicker ? "is-active" : ""}`}
           onClick={() => setShowColorPicker((v) => !v)}
           title="Culoare text"
-          style={{ display: "flex", alignItems: "center", gap: 4 }}
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "4px 8px" }}
         >
-          <Palette size={14} style={{ color: color }} />
+          <Palette size={14} style={{ color: "#475569" }} />
+          <div style={{ width: 14, height: 2, background: color, borderRadius: 1 }} />
         </button>
         {showColorPicker && (
           <div className="color-picker-dropdown">
