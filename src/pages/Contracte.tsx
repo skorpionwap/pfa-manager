@@ -1,16 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import TextAlign from "@tiptap/extension-text-align";
-import { TextStyle } from "@tiptap/extension-text-style";
-import Color from "@tiptap/extension-color";
-import FontFamily from "@tiptap/extension-font-family";
-import { Plus, X, Check, Trash2, FileSignature, Bold, Italic,
-  Underline as UnderlineIcon, Strikethrough, List, ListOrdered, Minus,
-  AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Quote, Code, Palette,
-  Sparkles, Loader2, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, X, Check, Trash2, FileSignature,
+  Sparkles, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import LexicalEditor from "@/components/LexicalEditor";
 import { getDb, getSetting, isTauri } from "@/lib/db";
 import { pickAndAnalyzeContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
 import { useToast } from "@/components/Toast";
@@ -92,122 +83,6 @@ const empty = (): Omit<Contract, "id" | "created_at" | "client_name"> => ({
   description: "", amount: 0, status: "activ", notes: "",
 });
 
-// ── Toolbar ───────────────────────────────────────────────────────────────────
-const FONTS = [
-  { value: "",                              label: "Implicit" },
-  { value: "Palatino Linotype, Palatino, serif", label: "Palatino" },
-  { value: "Georgia, serif",                label: "Georgia" },
-  { value: "Times New Roman, serif",        label: "Times New Roman" },
-  { value: "Arial, sans-serif",             label: "Arial" },
-  { value: "Helvetica, sans-serif",         label: "Helvetica" },
-  { value: "Courier New, monospace",        label: "Courier New" },
-];
-
-const TEXT_COLORS = [
-  { value: "#000000", label: "Negru" },
-  { value: "#374151", label: "Gri închis" },
-  { value: "#6b7280", label: "Gri" },
-  { value: "#dc2626", label: "Roșu" },
-  { value: "#2563eb", label: "Albastru" },
-  { value: "#16a34a", label: "Verde" },
-  { value: "#d97706", label: "Portocaliu" },
-  { value: "#7c3aed", label: "Violet" },
-];
-
-function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
-  const [showColors, setShowColors] = useState(false);
-  const savedSelection = useRef<{ from: number; to: number } | null>(null);
-  if (!editor) return null;
-  const btn = (active: boolean, onClick: () => void, label: React.ReactNode, title?: string) => (
-    <button type="button" className={active ? "is-active" : ""} onClick={onClick} title={title}>{label}</button>
-  );
-  const currentColor = editor.getAttributes("textStyle").color as string | undefined;
-  return (
-    <div className="tiptap-toolbar">
-      {/* Font family */}
-      <select
-        className="tiptap-font-select"
-        title="Font"
-        value={editor.getAttributes("textStyle").fontFamily ?? ""}
-        onMouseDown={() => {
-          const { from, to } = editor.state.selection;
-          savedSelection.current = { from, to };
-        }}
-        onChange={e => {
-          const v = e.target.value;
-          if (savedSelection.current) {
-            editor.commands.setTextSelection(savedSelection.current);
-          }
-          if (v) editor.chain().focus().setFontFamily(v).run();
-          else editor.chain().focus().unsetFontFamily().run();
-          savedSelection.current = null;
-        }}
-      >
-        {FONTS.map(f => (
-          <option key={f.value} value={f.value} style={{ fontFamily: f.value || "inherit" }}>
-            {f.label}
-          </option>
-        ))}
-      </select>
-      <div className="sep" />
-      {/* Formatting */}
-      {btn(editor.isActive("bold"),        () => editor.chain().focus().toggleBold().run(),        <Bold size={12} />, "Bold (Ctrl+B)")}
-      {btn(editor.isActive("italic"),      () => editor.chain().focus().toggleItalic().run(),      <Italic size={12} />, "Italic (Ctrl+I)")}
-      {btn(editor.isActive("underline"),   () => editor.chain().focus().toggleUnderline().run(),   <UnderlineIcon size={12} />, "Underline (Ctrl+U)")}
-      {btn(editor.isActive("strike"),      () => editor.chain().focus().toggleStrike().run(),      <Strikethrough size={12} />, "Tăiat")}
-      <div className="sep" />
-      {/* Headings */}
-      {btn(editor.isActive("heading", { level: 1 }), () => editor.chain().focus().toggleHeading({ level: 1 }).run(), "H1")}
-      {btn(editor.isActive("heading", { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), "H2")}
-      {btn(editor.isActive("heading", { level: 3 }), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), "H3")}
-      <div className="sep" />
-      {/* Alignment */}
-      {btn(editor.isActive({ textAlign: "left" }),    () => editor.chain().focus().setTextAlign("left").run(),    <AlignLeft size={12} />, "Aliniere stânga")}
-      {btn(editor.isActive({ textAlign: "center" }),  () => editor.chain().focus().setTextAlign("center").run(),  <AlignCenter size={12} />, "Centrat")}
-      {btn(editor.isActive({ textAlign: "right" }),   () => editor.chain().focus().setTextAlign("right").run(),   <AlignRight size={12} />, "Aliniere dreapta")}
-      {btn(editor.isActive({ textAlign: "justify" }), () => editor.chain().focus().setTextAlign("justify").run(), <AlignJustify size={12} />, "Justified")}
-      <div className="sep" />
-      {/* Lists */}
-      {btn(editor.isActive("bulletList"),  () => editor.chain().focus().toggleBulletList().run(),  <List size={12} />, "Listă puncte")}
-      {btn(editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run(), <ListOrdered size={12} />, "Listă numerotată")}
-      <div className="sep" />
-      {/* Block types */}
-      {btn(editor.isActive("blockquote"), () => editor.chain().focus().toggleBlockquote().run(), <Quote size={12} />, "Citat")}
-      {btn(editor.isActive("code"),       () => editor.chain().focus().toggleCode().run(),       <Code size={12} />, "Cod inline")}
-      {btn(false, () => editor.chain().focus().setHorizontalRule().run(), <Minus size={12} />, "Separator")}
-      <div className="sep" />
-      {/* Color picker */}
-      <div style={{ position: "relative" }}>
-        <button type="button" title="Culoare text" onClick={() => setShowColors(v => !v)}
-          style={{ display: "flex", alignItems: "center", gap: 3 }}>
-          <Palette size={12} />
-          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2,
-            background: currentColor ?? "var(--tx-1)", border: "1px solid var(--border)" }} />
-        </button>
-        {showColors && (
-          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
-            background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)",
-            padding: 8, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, width: 120 }}>
-            {TEXT_COLORS.map(c => (
-              <button key={c.value} type="button" title={c.label}
-                onClick={() => { editor.chain().focus().setColor(c.value).run(); setShowColors(false); }}
-                style={{ width: 20, height: 20, borderRadius: 4, background: c.value,
-                  border: currentColor === c.value ? "2px solid var(--ac)" : "1px solid var(--border)",
-                  cursor: "pointer", padding: 0 }} />
-            ))}
-            <button type="button" title="Culoare implicită"
-              onClick={() => { editor.chain().focus().unsetColor().run(); setShowColors(false); }}
-              style={{ width: 20, height: 20, borderRadius: 4, background: "var(--bg-base)",
-                border: "1px solid var(--border)", cursor: "pointer", fontSize: 10, color: "var(--tx-3)" }}>
-              ✕
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Contracte() {
   const { toast } = useToast();
@@ -220,19 +95,7 @@ export default function Contracte() {
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<ContractAnalysis | null>(null);
   const [templateOpts, setTemplateOpts] = useState<TemplateOptions>(() => defaultTemplateOptions("cesiune"));
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      TextStyle,
-      Color,
-      FontFamily,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-    ],
-    content: "",
-    editorProps: { attributes: { spellcheck: "false" } },
-  });
+  const [editorContent, setEditorContent] = useState("");
 
   const load = async () => {
     const db = await getDb();
@@ -309,7 +172,7 @@ export default function Contracte() {
     const opts = defaultTemplateOptions(f.type);
     setForm(f);
     setTemplateOpts(opts);
-    editor?.commands.setContent("");
+    setEditorContent("");
     setShowForm(true);
   };
 
@@ -318,7 +181,7 @@ export default function Contracte() {
     setForm({ client_id: c.client_id, type: c.type, number: c.number, date: c.date,
               description: c.description, amount: c.amount, status: c.status, notes: c.notes });
     setTemplateOpts(defaultTemplateOptions(c.type));
-    editor?.commands.setContent(c.description || "");
+    setEditorContent(c.description || "");
     setShowForm(true);
   };
 
@@ -331,12 +194,12 @@ export default function Contracte() {
     const vars = await loadVars(type, clientId, formData, opts);
     const html = substituteVars(TEMPLATE_HTML[type] ?? "", vars);
     setForm(f => ({ ...f, type }));
-    editor?.commands.setContent(html);
+    setEditorContent(html);
   };
 
   const save = async () => {
     if (!form.date) { toast("Data contractului este obligatorie", "error"); return; }
-    const description = editor?.getHTML() ?? form.description;
+    const description = editorContent || form.description;
     const isEmpty = !description || description === "<p></p>" || description.trim() === "";
     if (!editing && isEmpty) { toast("Conținutul contractului nu poate fi gol", "error"); return; }
     const db = await getDb();
@@ -395,7 +258,7 @@ export default function Contracte() {
     setForm(f);
     setEditing(null);
     setAnalysisResult(null);
-    editor?.commands.setContent("");
+    setEditorContent("");
     setShowForm(true);
   };
 
@@ -562,7 +425,7 @@ export default function Contracte() {
       {/* ── Contract form modal ──────────────────────────────────────────────── */}
       {showForm && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div className="modal" style={{ width: "min(1100px, 96vw)", height: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <div className="modal" style={{ width: "min(1400px, 98vw)", height: "95vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
             {/* Modal header */}
             <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
@@ -640,7 +503,12 @@ export default function Contracte() {
                 </div>
 
                 {/* Template options */}
-                <TemplateOptionsPanel opts={templateOpts} onChange={setTemplateOpts} type={form.type} />
+                <TemplateOptionsPanel
+                  opts={templateOpts}
+                  onChange={setTemplateOpts}
+                  type={form.type}
+                  onRegenerate={() => applyTemplate(form.type, form.client_id, form, templateOpts)}
+                />
 
                 {/* Notes */}
                 <div style={{ padding: "16px 20px", flexShrink: 0 }}>
@@ -661,18 +529,13 @@ export default function Contracte() {
 
               {/* RIGHT COLUMN - Editor sidebar */}
               <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-0)", minWidth: 0 }}>
-                <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-                  <Label style={{ marginBottom: 0 }}>Text contract</Label>
-                  <button type="button" className="btn btn-ghost" style={{ fontSize: 11, padding: "4px 10px" }}
-                    onClick={() => applyTemplate(form.type, form.client_id, form, templateOpts)}>
-                    Regenerează
-                  </button>
-                </div>
                 <div style={{ flex: 1, padding: "12px 16px", display: "flex", flexDirection: "column", minHeight: 0 }}>
-                  <div className="tiptap-wrap" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                    <Toolbar editor={editor} />
-                    <EditorContent editor={editor} style={{ flex: 1 }} />
-                  </div>
+                  <LexicalEditor
+                    value={editorContent}
+                    onChange={setEditorContent}
+                    placeholder="Text contract..."
+                    className="lexical-editor-wrap"
+                  />
                 </div>
               </div>
 
@@ -686,11 +549,12 @@ export default function Contracte() {
 
 // ── Template Options Panel ────────────────────────────────────────────────────
 function TemplateOptionsPanel({
-  opts, onChange, type,
+  opts, onChange, type, onRegenerate,
 }: {
   opts: TemplateOptions;
   onChange: (o: TemplateOptions) => void;
   type: ContractType;
+  onRegenerate: () => void;
 }) {
   const total = opts.transe.reduce((s, t) => s + t.procent, 0);
 
@@ -716,14 +580,26 @@ function TemplateOptionsPanel({
 
   return (
     <div style={{ padding: "12px 24px 14px", borderBottom: "1px solid var(--border)", background: "var(--bg-0)", flexShrink: 0 }}>
-      {/* Section label + total warning */}
+      {/* Section label + total warning + regenerate button */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <span style={f11}>Configurare template</span>
-        {total !== 100 && (
-          <span style={{ fontSize: 11, color: "#dc2626", fontFamily: "var(--font-mono)" }}>
-            ⚠ Tranșe: {total}% / 100%
-          </span>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {total !== 100 && (
+            <span style={{ fontSize: 11, color: "#dc2626", fontFamily: "var(--font-mono)" }}>
+              ⚠ Tranșe: {total}%
+            </span>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ fontSize: 11, padding: "4px 10px" }}
+            onClick={onRegenerate}
+            title="Regenerează textul contractului cu setările actuale"
+          >
+            <RefreshCw size={11} />
+            Regenerează
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
