@@ -14,7 +14,7 @@ import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { HorizontalRulePlugin } from "@lexical/react/LexicalHorizontalRulePlugin";
 
 import {
-  $getSelection,
+  $getSelection as $getSelectionLexical,
   $isRangeSelection,
   $createParagraphNode,
   $getRoot,
@@ -25,6 +25,10 @@ import {
   TextFormatType,
   COMMAND_PRIORITY_CRITICAL,
 } from "lexical";
+import {
+  $patchStyleText,
+  $getSelectionStyleValueForProperty,
+} from "@lexical/selection";
 import {
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
@@ -88,23 +92,25 @@ const EDITOR_THEME = {
 // ── Font Options ───────────────────────────────────────────────────────────────
 const FONTS = [
   { value: "", label: "Implicit" },
-  { value: "Palatino Linotype, Palatino, serif", label: "Palatino" },
+  { value: "'Palatino Linotype', Palatino, serif", label: "Palatino" },
   { value: "Georgia, serif", label: "Georgia" },
-  { value: "Times New Roman, serif", label: "Times New Roman" },
+  { value: "'Times New Roman', serif", label: "Times New Roman" },
   { value: "Arial, sans-serif", label: "Arial" },
   { value: "Helvetica, sans-serif", label: "Helvetica" },
-  { value: "Courier New, monospace", label: "Courier New" },
+  { value: "'Courier New', monospace", label: "Courier New" },
 ];
 
 const TEXT_COLORS = [
-  { value: "#000000", label: "Negru" },
-  { value: "#374151", label: "Gri închis" },
-  { value: "#6b7280", label: "Gri" },
-  { value: "#dc2626", label: "Roșu" },
-  { value: "#2563eb", label: "Albastru" },
-  { value: "#16a34a", label: "Verde" },
-  { value: "#d97706", label: "Portocaliu" },
-  { value: "#7c3aed", label: "Violet" },
+  { value: "#ffffff", label: "Alb" },
+  { value: "#f3f4f6", label: "Gri foarte deschis" },
+  { value: "#d1d5db", label: "Gri deschis" },
+  { value: "#9ca3af", label: "Gri" },
+  { value: "#ef4444", label: "Roșu" },
+  { value: "#3b82f6", label: "Albastru" },
+  { value: "#22c55e", label: "Verde" },
+  { value: "#eab308", label: "Galben" },
+  { value: "#a855f7", label: "Violet" },
+  { value: "#f97316", label: "Portocaliu" },
 ];
 
 // ── Toolbar Component ───────────────────────────────────────────────────────────
@@ -122,11 +128,13 @@ function Toolbar() {
   const [isLink, setIsLink] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [alignment, setAlignment] = useState<string>("left");
+  const [fontFamily, setFontFamily] = useState<string>("");
+  const [color, setColor] = useState<string>("#000000");
 
   const colorPickerRef = useRef<HTMLDivElement>(null);
 
   const updateToolbar = useCallback(() => {
-    const selection = $getSelection();
+    const selection = $getSelectionLexical();
     if (!$isRangeSelection(selection)) return;
 
     // Text formats
@@ -154,6 +162,10 @@ function Toolbar() {
       const format = selParent.getFormatType ? selParent.getFormatType() : "";
       setAlignment(format || "left");
     }
+
+    // Font family and color
+    setFontFamily($getSelectionStyleValueForProperty(selection, "font-family", ""));
+    setColor($getSelectionStyleValueForProperty(selection, "color", "#000000"));
 
     // Reset states
     setIsBulletList(false);
@@ -233,7 +245,7 @@ function Toolbar() {
 
   const formatHeading = (type: "h1" | "h2" | "h3" | "paragraph") => {
     editor.update(() => {
-      const selection = $getSelection();
+      const selection = $getSelectionLexical();
       if ($isRangeSelection(selection)) {
         if (type === "paragraph") {
           const paragraph = $createParagraphNode();
@@ -270,7 +282,7 @@ function Toolbar() {
 
   const formatQuote = () => {
     editor.update(() => {
-      const selection = $getSelection();
+      const selection = $getSelectionLexical();
       if ($isRangeSelection(selection)) {
         const quote = $createQuoteNode();
         selection.insertNodes([quote]);
@@ -280,7 +292,7 @@ function Toolbar() {
 
   const insertHorizontalRule = () => {
     editor.update(() => {
-      const selection = $getSelection();
+      const selection = $getSelectionLexical();
       if ($isRangeSelection(selection)) {
         const hr = $createHorizontalRuleNode();
         $insertNodes([hr]);
@@ -288,29 +300,34 @@ function Toolbar() {
     });
   };
 
-  const applyFont = (fontFamily: string) => {
+  const applyFont = (fontFamilyValue: string) => {
     editor.update(() => {
-      const selection = $getSelection();
+      const selection = $getSelectionLexical();
       if ($isRangeSelection(selection)) {
-        // Apply font via style on selection
-        selection.style = fontFamily ? `font-family: ${fontFamily};` : "";
+        $patchStyleText(selection, {
+          "font-family": fontFamilyValue,
+        });
       }
     });
+    editor.focus();
   };
 
-  const applyColor = (color: string) => {
+  const applyColor = (colorValue: string) => {
     editor.update(() => {
-      const selection = $getSelection();
+      const selection = $getSelectionLexical();
       if ($isRangeSelection(selection)) {
-        selection.style = `color: ${color};`;
+        $patchStyleText(selection, {
+          color: colorValue,
+        });
       }
     });
+    editor.focus();
     setShowColorPicker(false);
   };
 
   const formatAlignment = (align: "left" | "center" | "right" | "justify") => {
     editor.update(() => {
-      const selection = $getSelection();
+      const selection = $getSelectionLexical();
       if ($isRangeSelection(selection)) {
         const anchorNode = selection.anchor.getNode();
         const element = anchorNode.getTopLevelElementOrThrow();
@@ -352,7 +369,7 @@ function Toolbar() {
       <select
         className="toolbar-font-select"
         onChange={(e) => applyFont(e.target.value)}
-        defaultValue=""
+        value={fontFamily}
       >
         {FONTS.map((f) => (
           <option key={f.value} value={f.value}>
@@ -404,7 +421,7 @@ function Toolbar() {
           title="Culoare text"
           style={{ display: "flex", alignItems: "center", gap: 4 }}
         >
-          <Palette size={14} />
+          <Palette size={14} style={{ color: color }} />
         </button>
         {showColorPicker && (
           <div className="color-picker-dropdown">
@@ -436,10 +453,11 @@ interface LexicalEditorProps {
 function LexicalEditorInner({ value, onChange, placeholder = "Scrieți aici...", className }: LexicalEditorProps) {
   const [editor] = useLexicalComposerContext();
   const isExternalUpdate = useRef(false);
+  const lastEmittedHtml = useRef(value);
 
-  // Sync external value changes to editor
+  // Sync external value changes to editor (only if different from what we last sent)
   useEffect(() => {
-    if (!value || value === "") return;
+    if (value === lastEmittedHtml.current) return;
 
     isExternalUpdate.current = true;
     editor.update(() => {
@@ -448,11 +466,12 @@ function LexicalEditorInner({ value, onChange, placeholder = "Scrieți aici...",
 
       // Parse HTML and convert to Lexical nodes
       const parser = new DOMParser();
-      const dom = parser.parseFromString(value, "text/html");
+      const dom = parser.parseFromString(value || "", "text/html");
       const nodes = $generateNodesFromDOM(editor, dom);
       $insertNodes(nodes);
     });
     isExternalUpdate.current = false;
+    lastEmittedHtml.current = value;
   }, [value, editor]);
 
   // Listen for editor changes and emit HTML
@@ -462,7 +481,10 @@ function LexicalEditorInner({ value, onChange, placeholder = "Scrieți aici...",
 
       editorState.read(() => {
         const html = $generateHtmlFromNodes(editor, null);
-        onChange(html);
+        if (html !== lastEmittedHtml.current) {
+          lastEmittedHtml.current = html;
+          onChange(html);
+        }
       });
     });
   }, [editor, onChange]);
