@@ -22,6 +22,16 @@ Aplicație desktop pentru gestionarea activității de freelancing în România 
 
 Modul se configurează din **Setări** și influențează calculele fiscale, categoriile de cheltuieli și template-urile de contracte.
 
+## Capturi de ecran
+
+| Dashboard | Fiscal |
+|-----------|--------|
+| ![Dashboard](./assets/dashboard.png) | ![Fiscal](./assets/fiscal.png) |
+
+| Raport anual | Setări |
+|--------------|--------|
+| ![Raport anual](./assets/raport.png) | ![Setări](./assets/setari.png) |
+
 ## Tehnologii
 
 - **Frontend:** React 19, TypeScript, Vite, React Router 7
