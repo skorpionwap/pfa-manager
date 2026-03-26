@@ -72,3 +72,7 @@ La prima rulare, mergi în **Setări** pentru a configura:
 - Cheia API Gemini (pentru funcționalitățile AI)
 - Modul de operare (DDA / PFA)
 - Valorile fiscale pe an (salariu minim, cote contributii) dacă diferă de valorile implicite
+
+## Licență
+
+MIT © 2026 Mircea Gabriel — vezi [LICENSE](./LICENSE)
