@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ConfirmModal from "@/components/ConfirmModal";
 import { Plus, Pencil, Trash2, X, Check, Search, Receipt, Filter, Sparkles, Loader2 } from "lucide-react";
 import { getDb, getSetting, isTauri } from "@/lib/db";
 import { useToast } from "@/components/Toast";
@@ -27,6 +28,7 @@ export default function Cheltuieli() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scanResult, setScanResult]   = useState<ExtractedReceipt | null>(null);
   const [mode, setMode]             = useState<OperatingMode>("dda");
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const load = async () => {
     const db = await getDb();
@@ -88,12 +90,17 @@ export default function Cheltuieli() {
     setShowForm(true);
   };
 
-  const remove = async (id: number) => {
-    if (!confirm("Ștergi această cheltuială?")) return;
-    const db = await getDb();
-    await db.execute("DELETE FROM expenses WHERE id=?", [id]);
-    load();
-    toast("Cheltuială ștearsă", "info");
+  const remove = (id: number) => {
+    setConfirmModal({
+      message: "Ștergi această cheltuială? Această acțiune nu poate fi anulată.",
+      onConfirm: async () => {
+        setConfirmModal(null);
+        const db = await getDb();
+        await db.execute("DELETE FROM expenses WHERE id=?", [id]);
+        load();
+        toast("Cheltuială ștearsă", "info");
+      },
+    });
   };
 
   // Filtered & aggregated
@@ -410,6 +417,14 @@ export default function Cheltuieli() {
             </div>
           </div>
         </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       )}
     </div>
   );

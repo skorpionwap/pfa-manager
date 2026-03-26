@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import ConfirmModal from "@/components/ConfirmModal";
 import { Plus, Search, Pencil, Trash2, X, Check, UserCircle2 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { useToast } from "@/components/Toast";
@@ -25,6 +26,7 @@ export default function Clienti() {
   const [form, setForm]         = useState(empty());
   const searchRef               = useRef<HTMLInputElement>(null);
   const { toast }               = useToast();
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const load = async () => {
     const db = await getDb();
@@ -72,10 +74,15 @@ export default function Clienti() {
     const warning = deps.length
       ? `\n\nATENȚIE: clientul are ${deps.join(" și ")} asociate care vor rămâne fără client!`
       : "";
-    if (!confirm(`Ștergi clientul?${warning}`)) return;
-    await db.execute("DELETE FROM clients WHERE id=?", [id]);
-    load();
-    toast("Client șters", "info");
+    setConfirmModal({
+      message: `Ștergi clientul?${warning}`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await db.execute("DELETE FROM clients WHERE id=?", [id]);
+        load();
+        toast("Client șters", "info");
+      },
+    });
   };
 
   const filtered = clients.filter(c =>
@@ -219,6 +226,14 @@ export default function Clienti() {
             </div>
           </div>
         </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ConfirmModal from "@/components/ConfirmModal";
 import { Plus, X, Check, Trash2, FileSignature,
   Sparkles, Loader2, AlertTriangle, RefreshCw,
   Eye, Printer, Upload, FileText } from "lucide-react";
@@ -102,6 +103,7 @@ export default function Contracte() {
   const [editorContent, setEditorContent] = useState("");
   const [viewContract, setViewContract] = useState<Contract | null>(null);
   const [printHtml, setPrintHtml] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const load = async () => {
     const db = await getDb();
@@ -288,12 +290,17 @@ export default function Contracte() {
     toast(editing ? "Contract actualizat" : "Contract adăugat", "success");
   };
 
-  const remove = async (id: number) => {
-    if (!confirm("Ștergi contractul?")) return;
-    const db = await getDb();
-    await db.execute("DELETE FROM contracts WHERE id=?", [id]);
-    load();
-    toast("Contract șters", "info");
+  const remove = (id: number) => {
+    setConfirmModal({
+      message: "Ștergi contractul? Această acțiune nu poate fi anulată.",
+      onConfirm: async () => {
+        setConfirmModal(null);
+        const db = await getDb();
+        await db.execute("DELETE FROM contracts WHERE id=?", [id]);
+        load();
+        toast("Contract șters", "info");
+      },
+    });
   };
 
   const handleAnalyzePDF = async () => {
@@ -783,6 +790,14 @@ export default function Contracte() {
           <div style={{ fontFamily: "'Georgia','Times New Roman',serif", fontSize: 14, lineHeight: 1.7, color: "#111", padding: "2.5cm", maxWidth: 800, margin: "0 auto" }}
             dangerouslySetInnerHTML={{ __html: printHtml }} />
         </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       )}
     </div>
   );

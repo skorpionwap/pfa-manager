@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import ConfirmModal from "@/components/ConfirmModal";
 import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye, Upload, Loader2 } from "lucide-react";
 import { getDb, peekInvoiceNumber, bumpInvoiceCounter, isTauri } from "@/lib/db";
 import { useToast } from "@/components/Toast";
@@ -50,6 +51,7 @@ export default function Facturi() {
   const [operatingMode, setOperatingMode] = useState<OperatingMode>("dda");
   const [showPrint, setShowPrint] = useState(false);
   const [contracts, setContracts] = useState<any[]>([]); // Added for contract linking
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Form state
   const [clientId, setClientId] = useState<number | "">("");
@@ -196,12 +198,17 @@ export default function Facturi() {
     toast(editing ? `${modeName} actualizat` : `${modeName} emis`, "success");
   };
 
-  const remove = async (id: number) => {
-    if (!confirm("Ștergi factura?")) return;
-    const db = await getDb();
-    await db.execute("DELETE FROM invoices WHERE id=?", [id]);
-    load();
-    toast("Factura ștearsă", "info");
+  const remove = (id: number) => {
+    setConfirmModal({
+      message: "Ștergi factura? Această acțiune nu poate fi anulată.",
+      onConfirm: async () => {
+        setConfirmModal(null);
+        const db = await getDb();
+        await db.execute("DELETE FROM invoices WHERE id=?", [id]);
+        load();
+        toast("Factura ștearsă", "info");
+      },
+    });
   };
 
   const changeStatus = async (id: number, s: Status) => {
@@ -587,6 +594,14 @@ export default function Facturi() {
             )}
           </div>
         </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       )}
     </div>
   );
