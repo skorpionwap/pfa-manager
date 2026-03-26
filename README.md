@@ -63,6 +63,25 @@ pnpm tauri build
 
 Executabilul se generează în `src-tauri/target/release/`.
 
+## Descărcare
+
+Descarcă ultima versiune de pe pagina [Releases](https://github.com/mirceagabriel/pfa-manager/releases).
+
+| Platformă | Fișier |
+|-----------|--------|
+| **Windows** | `PFA-Manager_1.0.0_x64-setup.exe` sau `.msi` |
+| **Linux** | `pfa-manager_1.0.0_amd64.deb` sau `.AppImage` |
+| **macOS** | `PFA Manager.app` sau `.dmg` |
+
+### Creare release nou
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions va build-ui automat pentru toate platformele și va crea un draft release.
+
 ## Configurare
 
 La prima rulare, mergi în **Setări** pentru a configura:
