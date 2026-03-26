@@ -65,7 +65,7 @@ Executabilul se generează în `src-tauri/target/release/`.
 
 ## Descărcare
 
-Descarcă ultima versiune de pe pagina [Releases](https://github.com/mirceagabriel/pfa-manager/releases).
+Descarcă ultima versiune de pe pagina [Releases](https://github.com/skorpionwap/pfa-manager/releases).
 
 | Platformă | Fișier |
 |-----------|--------|
