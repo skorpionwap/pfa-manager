@@ -928,7 +928,7 @@ ${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
               {/* Note */}
               <div>
                 <FieldLabel>Note, Garanții și Condiții parteneriat</FieldLabel>
-                <textarea className="field" rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Scrie aici notele tale sau cere ajutorul Gemini..." style={{ resize: "vertical" }} />
+                <textarea className="field" rows={8} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Scrie aici notele tale sau cere ajutorul Gemini..." style={{ resize: "vertical", minHeight: 180 }} />
               </div>
 
             </div>
