@@ -4,9 +4,9 @@ import {
   Plus, X, Trash2, FileText,
   Printer, Eye, Zap, FileSignature
 } from "lucide-react";
-import { 
-  getDb, peekQuoteNumber, bumpQuoteCounter, 
-  getSetting, peekInvoiceNumber
+import {
+  getDb, peekQuoteNumber, bumpQuoteCounter,
+  peekInvoiceNumber
 } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import type { 
@@ -14,11 +14,11 @@ import type {
   OperatingMode, Settings 
 } from "@/types";
 import { useNavigate } from "react-router-dom";
-import { invoke } from "@tauri-apps/api/core";
 import StatusDropdown from "@/components/StatusDropdown";
 import QuoteTipizat from "@/components/QuoteTipizat";
 import FieldLabel from "@/components/FieldLabel";
 import ItemsTable from "@/components/ItemsTable";
+import OfertaGeminiPanel from "@/components/OfertaGeminiPanel";
 
 // Status options
 type Status = Quote["status"];
@@ -86,7 +86,7 @@ export default function Oferte() {
   const [status, setStatus] = useState<Status>("draft");
   const [notes, setNotes] = useState("");
   
-  const [geminiLoading, setGeminiLoading] = useState(false);
+  const [geminiPanelOpen, setGeminiPanelOpen] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -306,37 +306,33 @@ export default function Oferte() {
     setter(prev => prev.filter((_, j) => j !== i));
   };
 
-  const consultGemini = async () => {
-    const apiKey = await getSetting("gemini_api_key");
-    if (!apiKey) {
-      toast("Configurați cheia API Gemini în setări.", "error");
-      return;
-    }
-    
-    setGeminiLoading(true);
-    try {
-      const prompt = `Ești un consultant de vânzări priceput. Ajută-mă să rafinez această ofertă:
+  const buildQuoteContext = () => {
+    const client = clients.find(c => c.id === clientId);
+    const serviceList = items.filter(it => it.description).map(it => `  - ${it.description}: ${it.total} RON`).join("\n") || "  (niciun serviciu adăugat încă)";
+    const subList = hasSubscription && subscriptionItems.length
+      ? subscriptionItems.filter(it => it.description).map(it => `  - ${it.description}: ${it.unit_price} RON/lună`).join("\n")
+      : null;
+
+    return `Ești un consultant de vânzări și strateg digital specializat pe piața din România.
+Ajuți un freelancer să optimizeze o ofertă comercială.
+
+OFERTĂ CURENTĂ:
+- Client: ${client?.name || "nespecificat"}
+- Titlu proiect: ${title || "nespecificat"}
 - Tip proiect: ${projectType}
-- Titlu: ${title}
-- Pagini: ${pageCount}
-- Servicii selectate: ${items.map(it => it.description).join(", ")}
-${hasSubscription ? `- Abonament propus: ${subscriptionItems.map(it => it.description || "Mentenanță").join(", ")}` : ""}
+- Pagini estimate: ${pageCount}
+- Termen livrare: ${deliveryDays} zile
+- Valabilitate ofertă: ${validUntil}
 
-Te rog:
-1. Sugerează 2-3 servicii extra care s-ar potrivi și ar aduce valoare clientului.
-2. Formulează o "Notă / Condiții" profesionistă de 3-4 rânduri, prietenoasă, care să scoată în evidență expertiza mea.
-3. Dacă prețul total actual (${calcTotal()} RON) pare mic sau mare pentru piața din România pentru acest tip de proiect, dă o sugestie subtilă.
+SERVICII ONE-TIME:
+${serviceList}
+- Subtotal: ${calcSubtotal()} RON
+${discountPercent > 0 ? `- Discount: ${discountPercent}% (−${calcDiscount(calcSubtotal())} RON)` : ""}
+- TOTAL PROIECT: ${calcTotal()} RON
+${subList ? `\nABONAMENT LUNAR:\n${subList}\n- Total lunar: ${calcSubPrice()} RON/lună\n- Perioadă minimă: ${subscriptionMonths} luni\n- Start: ${subscriptionStartDate}` : "- Fără plan de abonament"}
+${notes ? `\nNOTE CURENTE:\n${notes}` : ""}
 
-Răspunde direct, profesionist, în română. Fără caractere speciale inutile.`;
-
-      const response = await invoke<string>("call_gemini", { apiKey, model: (await getSetting("gemini_model") || "gemini-2.0-flash"), prompt });
-      setNotes(prev => prev + "\n\n--- Sugestii Gemini ---\n" + response);
-      toast("Sugestii Gemini adăugate în note", "success");
-    } catch (e: any) {
-      toast("Eroare Gemini: " + e.message, "error");
-    } finally {
-      setGeminiLoading(false);
-    }
+Răspunde concis și practic în română.`;
   };
 
   const convertToFinancialDoc = async (q: Quote) => {
@@ -461,18 +457,19 @@ Răspunde direct, profesionist, în română. Fără caractere speciale inutile.
             <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ margin: 0, fontSize: 16 }}>{editing ? `Editează oferta ${editing.number}` : "Creează Ofertă Nouă"}</h3>
               <div style={{ display: "flex", gap: 8 }}>
-                <button 
-                  onClick={consultGemini} 
-                  disabled={geminiLoading}
-                  style={{ 
-                    display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", 
-                    borderRadius: "var(--r-md)", border: "1px solid var(--ac)", 
-                    background: "var(--ac-dim)", color: "var(--ac)", fontSize: 12, fontWeight: 600,
-                    cursor: geminiLoading ? "not-allowed" : "pointer"
+                <button
+                  onClick={() => setGeminiPanelOpen(v => !v)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
+                    borderRadius: "var(--r-md)",
+                    border: geminiPanelOpen ? "1px solid var(--ac)" : "1px solid var(--border)",
+                    background: geminiPanelOpen ? "var(--ac-dim)" : "var(--bg-2)",
+                    color: geminiPanelOpen ? "var(--ac)" : "var(--tx-2)",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
                   }}
                 >
                   <Zap size={14} fill="currentColor" />
-                  {geminiLoading ? "Se analizează..." : "Consultă Gemini AI"}
+                  Asistent AI
                 </button>
                 <button onClick={() => setShowForm(false)} className="btn btn-ghost" style={{ padding: 6 }}><X size={16} /></button>
               </div>
@@ -637,12 +634,19 @@ Răspunde direct, profesionist, în română. Fără caractere speciale inutile.
       )}
 
       {confirmModal && (
-        <ConfirmModal 
-          message={confirmModal.message} 
-          onConfirm={confirmModal.onConfirm} 
-          onCancel={() => setConfirmModal(null)} 
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
         />
       )}
+
+      <OfertaGeminiPanel
+        open={geminiPanelOpen && showForm}
+        onClose={() => setGeminiPanelOpen(false)}
+        quoteContext={buildQuoteContext()}
+        onApplyToNotes={text => setNotes(prev => prev ? prev + "\n\n" + text : text)}
+      />
     </div>
   );
 }
