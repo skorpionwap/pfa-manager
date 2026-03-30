@@ -144,61 +144,82 @@ export default function OfertaGeminiPanel({ open, onClose, quoteContext, initial
 
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-        {messages.map((m, i) => (
-          <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", gap: 4 }}>
-            <div style={{
-              maxWidth: "90%",
-              padding: "10px 14px", borderRadius: 14, fontSize: 12, lineHeight: 1.65,
-              whiteSpace: "pre-wrap",
-              ...(m.role === "user"
-                ? { background: "var(--ac)", color: "#fff", borderBottomRightRadius: 3 }
-                : { background: "var(--bg-2)", color: "var(--tx-1)", border: "1px solid var(--border)", borderBottomLeftRadius: 3 }),
-            }}>
-              {m.text}
-            </div>
-            {m.role === "ai" && (
-              <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
-                <button
-                  onClick={() => onApplyToNotes(m.text)}
-                  style={{
-                    fontSize: 10, fontWeight: 600, color: "var(--tx-3)",
-                    background: "none", border: "none", cursor: "pointer", padding: "2px 4px",
-                    display: "flex", alignItems: "center", gap: 4,
-                  }}
-                >
-                  ↓ Adaugă la note
-                </button>
-                
-                {m.text.includes("<config>") && (
-                  <button
-                    onClick={() => {
-                      const match = m.text.match(/<config>([\s\S]*?)<\/config>/);
-                      if (match && match[1]) {
-                        try {
-                          const config = JSON.parse(match[1]);
-                          // Dispatch event with config
-                          window.dispatchEvent(new CustomEvent("oferta-gemini-note", { 
-                            detail: { config } 
-                          }));
-                        } catch(e) {
-                          console.error("Failed to parse AI config", e);
-                        }
-                      }
-                    }}
-                    style={{
-                      fontSize: 10, fontWeight: 700, color: "var(--ac)",
+        {messages.map((m, i) => {
+          const hasConfig = m.role === "ai" && m.text.includes("<config>");
+          let cleanText = m.text;
+          let configMatch = null;
+          
+          if (hasConfig) {
+            configMatch = m.text.match(/<config>([\s\S]*?)<\/config>/);
+            cleanText = m.text.replace(/<config>[\s\S]*?<\/config>/g, "").trim();
+          }
+
+          return (
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", gap: 4 }}>
+              {cleanText && (
+                <div style={{
+                  maxWidth: "90%",
+                  padding: "10px 14px", borderRadius: 14, fontSize: 12, lineHeight: 1.65,
+                  whiteSpace: "pre-wrap",
+                  ...(m.role === "user"
+                    ? { background: "var(--ac)", color: "#fff", borderBottomRightRadius: 3 }
+                    : { background: "var(--bg-2)", color: "var(--tx-1)", border: "1px solid var(--border)", borderBottomLeftRadius: 3 }),
+                }}>
+                  {cleanText}
+                </div>
+              )}
+              
+              {m.role === "ai" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4, width: "100%" }}>
+                  {/* Buton simplu pt adăugare note */}
+                  {!hasConfig && (
+                    <button
+                      onClick={() => onApplyToNotes(cleanText)}
+                      style={{
+                        fontSize: 10, fontWeight: 600, color: "var(--tx-3)",
+                        background: "none", border: "none", cursor: "pointer", padding: "2px 4px",
+                        display: "flex", alignItems: "center", gap: 4, alignSelf: "flex-start"
+                      }}
+                    >
+                      ↓ Adaugă la note
+                    </button>
+                  )}
+                  
+                  {/* Card premium cu actiune vizibila clar pentru aplicare Ofertă */}
+                  {hasConfig && configMatch && configMatch[1] && (
+                    <div style={{ 
                       background: "var(--ac-dim)", border: "1px solid var(--ac-glow)", 
-                      borderRadius: 4, cursor: "pointer", padding: "2px 8px",
-                      display: "flex", alignItems: "center", gap: 4,
-                    }}
-                  >
-                    <Sparkles size={10} /> Aplică configurația AI
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+                      borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10,
+                      maxWidth: "95%", alignSelf: "flex-start", marginTop: 4
+                     }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "var(--ac)" }}>
+                        <Sparkles size={14} /> Ofertă structurată cu succes!
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--tx-2)", lineHeight: 1.4 }}>
+                        Inteligența Artificială a compus serviciile, abonamentul și costurile pe baza discuției.
+                        Apasă pe butonul de mai jos pentru a transfera datele în formularul de Ofertă.
+                      </div>
+                      <button
+                        onClick={() => {
+                          try {
+                            const config = JSON.parse(configMatch![1]);
+                            window.dispatchEvent(new CustomEvent("oferta-gemini-note", { detail: { config } }));
+                          } catch(e) {
+                            console.error("Failed to parse AI config", e);
+                          }
+                        }}
+                        className="btn btn-primary"
+                        style={{ width: "100%", padding: "10px 0", justifyContent: "center", fontSize: 13, fontWeight: 700, gap: 6 }}
+                      >
+                        🚀 Transferă datele în Ofertă
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {loading && (
           <div style={{ display: "flex", alignItems: "flex-start" }}>

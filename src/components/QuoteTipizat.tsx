@@ -10,7 +10,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
   const an1 = quote.total + (quote.has_subscription ? quote.subscription_price * 12 : 0);
 
   return (
-    <div style={{ color: "black", fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.5 }}>
+    <div style={{ color: "#111", fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.5, WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 60 }}>
         <div>
@@ -53,21 +53,28 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
       </div>
 
       {/* Project Overview */}
-      <div style={{ background: "#f8f9fa", padding: 24, borderRadius: 8, marginBottom: 40, borderLeft: "4px solid #000" }}>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{quote.title || "Proiect Digital"}</h2>
-        <p style={{ margin: "4px 0 0", color: "#666" }}>
-          Pachet: {quote.project_type} / {quote.page_count} pagini estimate / Termen livrare: {quote.delivery_days} zile
-        </p>
+      <div style={{ background: "#f8f9fa", padding: "20px 24px", borderRadius: 12, marginBottom: 40, borderLeft: "4px solid var(--ac)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#111" }}>{quote.title || "Proiect Digital"}</h2>
+          <p style={{ margin: "6px 0 0", color: "#666", fontSize: 13, fontWeight: 500 }}>
+            Pachet specific: <strong style={{ color: "#333" }}>{quote.project_type}</strong> / Pagini estimate: {quote.page_count}
+          </p>
+        </div>
+        <div style={{ textAlign: "right", background: "#fff", padding: "8px 16px", borderRadius: 8, border: "1px solid #eee" }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: "#999", marginBottom: 2 }}>Termen Livrare</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ac)" }}>{quote.delivery_days} zile lucrătoare</div>
+        </div>
       </div>
 
       {/* Services Table */}
-      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 30 }}>
+      <div style={{ overflow: "hidden", borderRadius: 12, border: "1px solid #eee", marginBottom: 30 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
-          <tr style={{ background: "#000", color: "white" }}>
-            <th style={{ textAlign: "left", padding: "12px 16px", fontSize: 11, textTransform: "uppercase" }}>
-              Descriere Servicii Dezvoltare
+          <tr style={{ background: "#f8f9fa", color: "#555", borderBottom: "1px solid #eaeaea" }}>
+            <th style={{ textAlign: "left", padding: "14px 20px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 800 }}>
+              Pachet / Servicii Dezvoltare
             </th>
-            <th style={{ width: 100, textAlign: "right", padding: "12px 16px", fontSize: 11, textTransform: "uppercase" }}>
+            <th style={{ width: 120, textAlign: "right", padding: "14px 20px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 800 }}>
               Total (RON)
             </th>
           </tr>
@@ -75,23 +82,24 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
         <tbody>
           {quote.items.map((it, i) => (
             <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: "16px", fontSize: 14 }}>
-                <div style={{ fontWeight: 600, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{it.description}</div>
+              <td style={{ padding: "20px", fontSize: 14 }}>
+                <div style={{ fontWeight: 700, whiteSpace: "pre-wrap", lineHeight: 1.6, color: "#111" }}>{it.description}</div>
                 {it.features && it.features.length > 0 && (
-                  <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12, color: "#555" }}>
+                  <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 12, color: "#555", lineHeight: 1.6 }}>
                     {it.features.map((feat, idx) => (
                       <li key={idx} style={{ marginBottom: 4 }}>{feat}</li>
                     ))}
                   </ul>
                 )}
               </td>
-              <td style={{ padding: "16px", textAlign: "right", fontWeight: 700, verticalAlign: "top" }}>
+              <td style={{ padding: "20px", textAlign: "right", fontWeight: 800, verticalAlign: "top", color: "#111", fontSize: 14 }}>
                 {it.total.toLocaleString()}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
 
       {/* Totals */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 60 }}>
@@ -101,16 +109,16 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
             <span>{quote.subtotal.toLocaleString()} RON</span>
           </div>
           {quote.discount_percent > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 13, color: "#00a651" }}>
-              <span>Discount ({quote.discount_percent}%):</span>
-              <span>-{quote.discount_amount.toLocaleString()} RON</span>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 13, color: "var(--ac)" }}>
+              <span>Discount aplicat ({quote.discount_percent}%):</span>
+              <span style={{ fontWeight: 700 }}>-{quote.discount_amount.toLocaleString()} RON</span>
             </div>
           )}
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderTop: "2px solid #000", fontWeight: 800, fontSize: 18, marginTop: 4 }}>
-            <span>TOTAL PROIECT:</span>
-            <span>{quote.total.toLocaleString()} RON</span>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 0", borderTop: "2px solid #111", fontWeight: 800, fontSize: 18, marginTop: 4, alignItems: "center" }}>
+            <span>TOTAL PROIECT</span>
+            <span style={{ fontSize: 24 }}>{quote.total.toLocaleString()} <span style={{ fontSize: 14, color: "#666" }}>RON</span></span>
           </div>
-          <p style={{ fontSize: 10, color: "#999", textAlign: "right", margin: "4px 0 0" }}>
+          <p style={{ fontSize: 10, color: "#999", textAlign: "right", margin: "0" }}>
             Scutit de TVA conform art. 310 Cod Fiscal
           </p>
         </div>
@@ -119,58 +127,63 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
       {/* Subscription */}
       {quote.has_subscription && (
         <div style={{ marginBottom: 60 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "2px solid #eee", paddingBottom: 8, marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, textTransform: "uppercase" }}>
-              2. Mentenanță și Suport (Abonament Lunar)
-            </h3>
-            <span style={{ fontSize: 11, color: "#666" }}>
-              Începând cu: <strong>{quote.subscription_start_date}</strong>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px solid #eaeaea", paddingBottom: 12, marginBottom: 16 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#111" }}>
+                2. Mentenanță și Suport Continuu
+              </h3>
+              <div style={{ fontSize: 11, color: "var(--ac)", fontWeight: 700, textTransform: "uppercase", marginTop: 4, letterSpacing: "0.05em" }}>Abonament Lunar Recomandat</div>
+            </div>
+            <span style={{ fontSize: 12, color: "#666", fontWeight: 500, background: "#f8f9fa", padding: "4px 10px", borderRadius: 6 }}>
+              Începând cu data lansării: <strong style={{ color: "#111" }}>{quote.subscription_start_date}</strong>
             </span>
           </div>
+          <div style={{ borderRadius: 12, border: "1px solid #eee", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <tbody>
               {quote.subscription_items.map((it, i) => (
-                <tr key={i} style={{ borderBottom: "1px dashed #eee" }}>
-                  <td style={{ padding: "12px 16px", fontSize: 14 }}>
-                    <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, fontWeight: 600 }}>{it.description}</div>
+                <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                  <td style={{ padding: "16px 20px", fontSize: 13 }}>
+                    <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, fontWeight: 700, color: "#111" }}>{it.description}</div>
                     {it.features && it.features.length > 0 && (
-                      <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "#555" }}>
+                      <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12, color: "#666", lineHeight: 1.5 }}>
                         {it.features.map((feat, idx) => (
-                          <li key={idx} style={{ marginBottom: 2 }}>{feat}</li>
+                          <li key={idx} style={{ marginBottom: 3 }}>{feat}</li>
                         ))}
                       </ul>
                     )}
                   </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600, verticalAlign: "top" }}>
+                  <td style={{ padding: "16px 20px", textAlign: "right", fontWeight: 700, verticalAlign: "top", color: "#111" }}>
                     {it.total.toLocaleString()} RON / lună
                   </td>
                 </tr>
               ))}
-              <tr style={{ background: "#fcfcfc" }}>
-                <td style={{ padding: "16px", fontWeight: 800 }}>TOTAL ABONAMENT LUNAR</td>
-                <td style={{ padding: "16px", textAlign: "right", fontWeight: 800, fontSize: 16 }}>
+              <tr style={{ background: "#f8f9fa" }}>
+                <td style={{ padding: "16px 20px", fontWeight: 800, color: "#111" }}>TOTAL ABONAMENT LUNAR</td>
+                <td style={{ padding: "16px 20px", textAlign: "right", fontWeight: 800, fontSize: 16, color: "var(--ac)" }}>
                   {quote.subscription_price.toLocaleString()} RON / lună
                 </td>
               </tr>
             </tbody>
           </table>
-          <p style={{ fontSize: 11, color: "#666", marginTop: 8 }}>
-            Angajament minim contractat: {quote.subscription_months} luni.
+          </div>
+          <p style={{ fontSize: 11, color: "#888", marginTop: 12, textAlign: "right" }}>
+            * Angajament minim contractat pentru resurse: {quote.subscription_months} luni.
           </p>
         </div>
       )}
 
       {/* Year 1 Summary */}
-      <div style={{ padding: "20px 30px", border: "3px solid #000", borderRadius: 8, background: "#fcfcfc", marginBottom: 60, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ padding: "24px 30px", border: "1px solid #eaeaea", borderRadius: 16, background: "linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", marginBottom: 60, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#666", textTransform: "uppercase" }}>
-            Total investiție estimată per Anul 1
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#111", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Total buget estimat per Anul 1
           </div>
-          <div style={{ fontSize: 12, color: "#999" }}>
-            (Dezvoltare + {quote.subscription_months} luni mentenanță)
+          <div style={{ fontSize: 12, color: "#666", marginTop: 4, fontWeight: 500 }}>
+            (Dezvoltare + {quote.subscription_months} luni mentenanță garantată)
           </div>
         </div>
-        <div style={{ fontSize: 28, fontWeight: 900 }}>{an1.toLocaleString()} RON</div>
+        <div style={{ fontSize: 32, fontWeight: 900, color: "var(--ac)" }}>{an1.toLocaleString()} <span style={{ fontSize: 16, color: "#111" }}>RON</span></div>
       </div>
 
       {/* Notes */}
