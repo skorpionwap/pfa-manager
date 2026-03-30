@@ -159,6 +159,17 @@ async function initSchema(db: Database) {
   // ── Sincronizare Catalog Servicii Ofertare ──────────────────────────────────
   // Curățăm duplicatele și artefactele trecute total ambigue din baza de date
   try {
+    // 1. Înlăturăm automat orice duplicat (păstrăm doar entry-ul cu ID cel mai mic)
+    await db.execute(`
+      DELETE FROM service_catalog
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM service_catalog
+        GROUP BY category, name
+      )
+    `);
+
+    // 2. Ștergem artefactele învechite (curățenie extremă)
     await db.execute(`DELETE FROM service_catalog WHERE name LIKE '%Site de prezentare%'`);
     await db.execute(`DELETE FROM service_catalog WHERE name LIKE '%Pagina de%'`);
     await db.execute(`DELETE FROM service_catalog WHERE name LIKE '%Landing Page%'`);
