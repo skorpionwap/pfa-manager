@@ -146,6 +146,17 @@ async function initSchema(db: Database) {
     );
   `);
 
+  // ── Chat Sessions (panoul general Gemini) ────────────────────────────────────
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS chat_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL DEFAULT 'Nouă conversație',
+      messages TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
   // Default settings
   await db.execute(`
     INSERT OR IGNORE INTO settings(key, value) VALUES
@@ -233,6 +244,66 @@ export async function setSetting(key: string, value: string): Promise<void> {
   // Trigger update event for reactivity
   window.dispatchEvent(new CustomEvent("settings-changed", { detail: { key, value } }));
 }
+
+// ── Chat Sessions (CRUD) ─────────────────────────────────────────────────────
+
+export interface ChatSession {
+  id: number;
+  title: string;
+  messages: string; // JSON string
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getChatSessions(): Promise<ChatSession[]> {
+  const db = await getDb();
+  return db.select<ChatSession[]>(
+    "SELECT * FROM chat_sessions ORDER BY updated_at DESC"
+  );
+}
+
+export async function getChatSession(id: number): Promise<ChatSession | null> {
+  const db = await getDb();
+  const rows = await db.select<ChatSession[]>(
+    "SELECT * FROM chat_sessions WHERE id=?", [id]
+  );
+  return rows[0] ?? null;
+}
+
+export async function createChatSession(title?: string): Promise<number> {
+  const db = await getDb();
+  const result = await db.execute(
+    "INSERT INTO chat_sessions(title, messages) VALUES(?, '[]')",
+    [title ?? "Nouă conversație"]
+  );
+  const id = result.lastInsertId;
+  if (id === undefined || id === null) {
+    throw new Error("Failed to create chat session - no ID returned");
+  }
+  return typeof id === "bigint" ? Number(id) : id;
+}
+
+export async function updateChatSession(id: number, messages: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    "UPDATE chat_sessions SET messages=?, updated_at=datetime('now') WHERE id=?",
+    [messages, id]
+  );
+}
+
+export async function renameChatSession(id: number, title: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    "UPDATE chat_sessions SET title=?, updated_at=datetime('now') WHERE id=?",
+    [title, id]
+  );
+}
+
+export async function deleteChatSession(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM chat_sessions WHERE id=?", [id]);
+}
+
 
 export async function getFiscalOverrides(_an?: number): Promise<Record<string, string>> {
   const db = await getDb();
