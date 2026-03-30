@@ -86,12 +86,13 @@ export default function ItemsTable({ items, listName, updateItem, removeItem }: 
                     className="field"
                     style={{ border: "none", background: "transparent", textAlign: "right", padding: "6px 8px", fontFamily: "var(--font-mono)" }}
                     type="number"
-                    value={it.unit_price}
+                    value={it.unit_price || ""}
                     onChange={e => updateItem(listName, i, "unit_price", Number(e.target.value))}
+                    placeholder="—"
                   />
                 </td>
-                <td style={{ padding: "6px 12px", textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--tx-1)", fontSize: 13 }}>
-                  {it.total.toLocaleString()} lei
+                <td style={{ padding: "6px 12px", textAlign: "right", fontFamily: "var(--font-mono)", color: it.total ? "var(--tx-1)" : "var(--tx-4)", fontSize: 13 }}>
+                  {it.total ? `${it.total.toLocaleString()} lei` : "—"}
                 </td>
                 <td style={{ padding: 4, textAlign: "center" }}>
                   <button className="btn btn-ghost" style={{ padding: 4, color: "var(--tx-4)" }} onClick={() => removeItem(listName, i)}>

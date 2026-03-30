@@ -824,7 +824,7 @@ ${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 24, maxHeight: "70vh", overflowY: "auto" }}>
               
               {/* Header Info */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16 }}>
                 <div>
                   <FieldLabel>Client</FieldLabel>
                   <select className="field" value={clientId} onChange={e => setClientId(Number(e.target.value) || "")}>
@@ -832,7 +832,7 @@ ${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
-                <div style={{ gridColumn: "span 2" }}>
+                <div style={{ gridColumn: "span 3" }}>
                   <FieldLabel>Titlu Proiect (Nume prietenos)</FieldLabel>
                   <input className="field" value={title} onChange={e => setTitle(e.target.value)} placeholder="ex: Soluție Prezență Online Profesională" />
                 </div>
@@ -845,6 +845,10 @@ ${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
                 <div>
                   <FieldLabel>Nr. Pagini estimat</FieldLabel>
                   <input className="field" type="number" value={pageCount} onChange={e => setPageCount(Number(e.target.value))} />
+                </div>
+                <div>
+                  <FieldLabel>Termen livrare (zile)</FieldLabel>
+                  <input className="field" type="number" min={1} value={deliveryDays} onChange={e => setDeliveryDays(Number(e.target.value))} />
                 </div>
                 <div>
                   <FieldLabel>Valabilitate (până la)</FieldLabel>

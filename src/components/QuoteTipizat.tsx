@@ -7,7 +7,10 @@ interface QuoteTipizatProps {
 }
 
 export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatProps) {
-  const an1 = quote.total + (quote.has_subscription ? quote.subscription_price * 12 : 0);
+  const validItems = (quote.items || []).filter(it => it.description && it.total > 0);
+  const validSubItems = (quote.subscription_items || []).filter(it => it.description && it.total > 0);
+  const hasSubscription = !!quote.has_subscription && validSubItems.length > 0;
+  const an1 = quote.total + (hasSubscription ? quote.subscription_price * 12 : 0);
 
   return (
     <div style={{ color: "#111", fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.5, WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}>
@@ -66,7 +69,8 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
         </div>
       </div>
 
-      {/* Services Table */}
+      {/* Services Table - only if there are valid items */}
+      {validItems.length > 0 && (
       <div style={{ overflow: "hidden", borderRadius: 12, border: "1px solid #eee", marginBottom: 30 }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -80,7 +84,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
           </tr>
         </thead>
         <tbody>
-          {quote.items.map((it, i) => (
+          {validItems.map((it, i) => (
             <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
               <td style={{ padding: "20px", fontSize: 14 }}>
                 <div style={{ fontWeight: 700, whiteSpace: "pre-wrap", lineHeight: 1.6, color: "#111" }}>{it.description}</div>
@@ -100,6 +104,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
         </tbody>
       </table>
       </div>
+      )}
 
       {/* Totals */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 60 }}>
@@ -125,7 +130,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
       </div>
 
       {/* Subscription */}
-      {quote.has_subscription && (
+      {hasSubscription && (
         <div style={{ marginBottom: 60 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px solid #eaeaea", paddingBottom: 12, marginBottom: 16 }}>
             <div>
@@ -141,7 +146,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
           <div style={{ borderRadius: 12, border: "1px solid #eee", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <tbody>
-              {quote.subscription_items.map((it, i) => (
+              {validSubItems.map((it, i) => (
                 <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
                   <td style={{ padding: "16px 20px", fontSize: 13 }}>
                     <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, fontWeight: 700, color: "#111" }}>{it.description}</div>
@@ -173,18 +178,20 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
         </div>
       )}
 
-      {/* Year 1 Summary */}
+      {/* Year 1 Summary - only show if there's actual value */}
+      {an1 > 0 && (
       <div style={{ padding: "24px 30px", border: "1px solid #eaeaea", borderRadius: 16, background: "linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", marginBottom: 60, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#111", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Total buget estimat per Anul 1
           </div>
           <div style={{ fontSize: 12, color: "#666", marginTop: 4, fontWeight: 500 }}>
-            (Dezvoltare + {quote.subscription_months} luni mentenanță garantată)
+            (Dezvoltare{hasSubscription ? ` + ${quote.subscription_months} luni mentenanță garantată` : ""})
           </div>
         </div>
         <div style={{ fontSize: 32, fontWeight: 900, color: "var(--ac)" }}>{an1.toLocaleString()} <span style={{ fontSize: 16, color: "#111" }}>RON</span></div>
       </div>
+      )}
 
       {/* Notes */}
       {quote.notes && (
