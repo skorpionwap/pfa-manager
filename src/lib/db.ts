@@ -45,7 +45,7 @@ async function initSchema(db: Database) {
       status TEXT NOT NULL DEFAULT 'draft',
       category TEXT DEFAULT '',
       is_signed INTEGER DEFAULT 0,
-      notes TEXT DEFAULT '',
+      notes TEXT DEFAULT '', chat_history TEXT DEFAULT '[]',
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (client_id) REFERENCES clients(id),
       FOREIGN KEY (contract_id) REFERENCES contracts(id)
@@ -58,8 +58,10 @@ async function initSchema(db: Database) {
   try { await db.execute("ALTER TABLE invoices ADD COLUMN is_signed INTEGER DEFAULT 0"); } catch(e) {}
   try { await db.execute("ALTER TABLE contracts ADD COLUMN source TEXT DEFAULT 'mine'"); } catch(e) {}
   try { await db.execute("ALTER TABLE contracts ADD COLUMN file_path TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE contracts ADD COLUMN chat_history TEXT DEFAULT '[]'"); } catch(e) {}
   try { await db.execute("ALTER TABLE invoices ADD COLUMN source TEXT DEFAULT 'mine'"); } catch(e) {}
   try { await db.execute("ALTER TABLE invoices ADD COLUMN file_path TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE quotes ADD COLUMN chat_history TEXT DEFAULT '[]'"); } catch(e) {}
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS contracts (
@@ -72,6 +74,7 @@ async function initSchema(db: Database) {
       amount REAL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'activ',
       notes TEXT DEFAULT '',
+      chat_history TEXT DEFAULT '[]',
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (client_id) REFERENCES clients(id)
     );
@@ -101,7 +104,7 @@ async function initSchema(db: Database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category TEXT NOT NULL DEFAULT 'general',
       name TEXT NOT NULL,
-      description TEXT DEFAULT '',
+      description TEXT DEFAULT '', chat_history TEXT DEFAULT '[]',
       features TEXT DEFAULT '[]',
       default_price REAL DEFAULT 0,
       unit TEXT DEFAULT 'buc',
@@ -137,7 +140,7 @@ async function initSchema(db: Database) {
       delivery_days INTEGER DEFAULT 30,
       valid_until TEXT DEFAULT '',
       status TEXT DEFAULT 'draft',
-      notes TEXT DEFAULT '',
+      notes TEXT DEFAULT '', chat_history TEXT DEFAULT '[]',
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (client_id) REFERENCES clients(id)
     );
@@ -153,8 +156,8 @@ async function initSchema(db: Database) {
       ('quote_counter', '1')
   `);
 
-  // ── Seed catalog servicii (prima rulare) ─────────────────────────────────────
-  // Curățăm duplicatele existente (dacă există) înainte de seed
+  // ── Sincronizare Catalog Servicii Ofertare ──────────────────────────────────
+  // Curățăm duplicatele existente (dacă există) înainte de processare
   await db.execute(`
     DELETE FROM service_catalog
     WHERE id NOT IN (
@@ -164,265 +167,46 @@ async function initSchema(db: Database) {
     )
   `);
 
-  // ── MIGRARE: Actualizează descrierile serviciilor existente ─────────────────
-  // Rulează de fiecare dată pentru a asigura că toți utilizatorii au descrierile noi
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Primești structura clară a site-ului, ca un "schelet" al tuturor paginilor. Include:\n• Wireframe-uri pentru homepage și toate paginile principale\n• Amplasarea elementelor (header, conținut, sidebar, footer)\n• Fluxul de navigare între pagini\n• 2 runde de revizuiri până la varianta finală\nLivrabile: Fișiere PDF cu wireframe-uri pentru fiecare pagină + schiță flux navigare.',
-    'Wireframe-uri & structură pagini'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Transform structura în design vizual profesional. Include:\n• Design pentru toate paginile site-ului (în funcție de pachetul ales)\n• Paleta de culori personalizată pe brandul tău\n• Tipografie (fonturi) aleasă pentru lizibilitate maximă\n• Elemente grafice (butoane, iconițe, carduri)\n• Varianta pentru desktop + mobil (responsive)\n• 3 runde de revizuiri incluse\nLivrabile: Fișiere Figma cu design-ul final + ghid de stil (culori, fonturi, componente).',
-    'Design UI/UX complet al interfeței'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Poți "naviga" prin site înainte să fie construit. Include:\n• Toate paginile conectate între ele prin link-uri\n• Simulare interacțiuni (click butoane, meniuri dropdown, formulare)\n• Experiența reală de navigare pe desktop și mobil\n• Util pentru testarea fluxului înainte de dezvoltare\nLivrabile: Link către prototipul online + instrucțiuni de testare.',
-    'Prototip interactiv (clickabil)'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Elementele grafice de bază pentru prezența ta online. Include:\n• 3 propuneri de logo (variante inițiale)\n• 2 runde de revizuiri pentru logo-ul ales\n• Paleta de culori (coduri HEX, RGB, CMYK)\n• Fonturi recomandate pentru site și materiale\n• Variante logo: principal, secundar, favicon\n• Ghid rapid de utilizare\nLivrabile: Fișiere logo (PNG transparent, SVG, AI) + ghid identitate (PDF).',
-    'Kit identitate vizuală digitală'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Site complet pentru afacerea ta, optimizat pentru toate dispozitivele. Include:\n• 1-15 pagini (homepage + pagini interne, în funcție de nevoi)\n• Design responsive (arată perfect pe telefon, tabletă, desktop)\n• Formular de contact funcțional\n• Integrare Google Maps (dacă e cazul)\n• Link-uri către social media\n• Optimizare SEO de bază (titluri, descrieri, meta tag-uri)\n• Viteză încărcare optimizată\n• 2 runde de modificări după lansare\nLivrabile: Site funcțional pe domeniul tău + acces panou administrare + ghid utilizare.\nDurată estimată: 5-10 zile lucrătoare.',
-    'Site de prezentare (1-15 pagini)'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Platformă completă de vânzări online. Include:\n• Catalog produse cu categorii și filtre\n• Pagina detaliată produs (imagini, descriere, recenzii)\n• Coș de cumpărături și checkout în 2 pași\n• Integrare procesator plăți (Stripe, PayU, mobilPay)\n• Generare automată facturi (opțional)\n• Panou administrare: adaugă/editează produse, vezi comenzi\n• Notificări email pentru comenzi noi\n• Integrare curier (Fan Courier, Sameday, etc.)\n• 1 oră de training pentru administrare\nLivrabile: Magazin online funcțional + documentație administrare + suport 7 zile.\nDurată estimată: 15-25 zile lucrătoare.',
-    'Magazin online (E-commerce)'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Soluție software complexă, dezvoltată de la zero pentru nevoile tale. Include:\n• Analiză detaliată a cerințelor și fluxurilor de lucru\n• Arhitectură personalizată (bază de date, backend, frontend)\n• Funcționalități custom (rapoarte, automatizări, integrări API)\n• Panou administrare cu roluri și permisiuni\n• Testare completă (funcțională, performanță, securitate)\n• Documentație tehnică și ghid utilizator\n• 2 săptămâni suport post-lansare\nLivrabile: Aplicație web funcțională + cod sursă + documentație completă.\nDurată estimată: 4-8 săptămâni (în funcție de complexitate).',
-    'Aplicație web personalizată'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Permite clienților să plătească direct pe site. Include:\n• Integrare cu un procesator de plăți (Stripe, PayU, mobilPay, Netopia)\n• Suport pentru carduri Visa, Mastercard, Maestro\n• Pagină de checkout securizată (SSL)\n• Confirmare automată a plății\n• Istoric tranzacții în panoul de administrare\n• Suport pentru plata la livrare (opțional)\n• Testare completă în mediu sandbox și producție\nLivrabile: Sistem de plăți funcțional + cont merchant configurat + ghid utilizare.',
-    'Sistem comenzi & plăți online'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Editezi singur conținutul site-ului, fără cunoștințe tehnice. Include:\n• Interfață intuitivă, în limba română\n• Editare texte și imagini pe toate paginile\n• Adăugare/ștergere pagini noi\n• Upload și gestionare galerie foto\n• Programare postări blog (dacă e cazul)\n• Backup automat al conținutului\n• 1 oră de training inclus\nLivrabile: Acces panou CMS + video-tutorial personalizare + suport 30 zile.',
-    'Panou de administrare conținut (CMS)'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Utilizatorii își creează cont și se autentifică pe site. Include:\n• Formular înregistrare (email/parolă sau social login)\n• Formular login cu "am uitat parola"\n• Profil utilizator (date personale, istoric, preferințe)\n• Roluri și permisiuni (admin, editor, utilizator standard)\n• Resetare parolă prin email\n• Securizare conturi (hash parole, protecție brute-force)\n• Opțional: autentificare prin Google/Facebook\nLivrabile: Sistem de autentificare complet funcțional + documentație.',
-    'Sistem conturi utilizatori & autentificare'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Transform site-ul într-o aplicație mobilă instalabilă. Include:\n• Conversia site-ului în aplicație nativă (Capacitor/Ionic)\n• Iconiță personalizată pe ecranul telefonului\n• Funcționare offline pentru conținut deja încărcat\n• Acces la funcții telefon (cameră, geolocație, notificări)\n• Publicare în Google Play Store (asistență inclusă)\n• Optimizare performanță pentru mobil\n• Testare pe dispozitive reale Android și iOS\nLivrabile: Fișiere APK (Android) și IPA (iOS) + ghid publicare în store-uri.',
-    'Aplicație Android & iOS (din site-ul tău)'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Site-ul tău se comportă ca o aplicație, fără descărcare din store. Include:\n• Instalare direct din browser (Chrome, Safari)\n• Funcționare offline sau cu internet slab\n• Actualizări automate (fără a merge în store)\n• Iconiță pe ecranul principal\n• Navigare fluidă, fără reîncărcări complete\n• Compatibil Android și iOS\n• Notificări push (necesită configurare separată)\nLivrabile: Site configurat ca PWA + fișier manifest + service worker.',
-    'Site instalabil ca aplicație (PWA)'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Trimite mesaje direct pe telefonul utilizatorilor. Include:\n• Configurare serviciu push (Firebase Cloud Messaging)\n• Cerere permisiuni notificări (popup prietenos)\n• Segmentare utilizatori (opțional)\n• Programare notificări pentru mai târziu\n• Statistici: câți au deschis notificarea\n• Suport pentru notificări pe Android și iOS\n• Integrare cu panoul de administrare existent\nLivrabile: Sistem push funcțional + ghid trimitere notificări.',
-    'Notificări push pe telefon'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Afli ce probleme are site-ul tău în ochii Google. Include:\n• Audit complet al structurii site-ului\n• Verificare indexare în Google Search Console\n• Analiză cuvinte cheie relevante pentru nișa ta\n• Identificare erori tehnice (link-uri stricate, imagini neoptimizate)\n• Verificare viteză încărcare (Desktop & Mobil)\n• Analiză concurență (top 3 competitori)\n• Raport detaliat cu priorități de acțiune\nLivrabile: Raport PDF 10-20 pagini + fișier Excel cu toate problemele + recomandări concrete.',
-    'Analiză & raport SEO tehnic'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Site rapid = poziții mai bune în Google + clienți mulțumiți. Include:\n• Analiză Google PageSpeed Insights (înainte și după)\n• Compresie și optimizare imagini (fără pierdere calitate)\n• Minificare cod CSS, JavaScript, HTML\n• Implementare lazy loading pentru imagini\n• Configurare cache browser\n• Optimizare interfață bază de date (dacă e cazul)\n• Testare performanță pe 3 dispozitive diferite\nLivrabile: Raport performanță înainte/după + site optimizat (scor 90+ PageSpeed).',
-    'Optimizare viteză & performanță'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Asigurăm că Google găsește și indexează toate paginile tale. Include:\n• Creare sitemap XML automat actualizat\n• Configurare robots.txt pentru crawlere\n• Înregistrare site în Google Search Console\n• Înregistrare în Google Analytics 4\n• Verificare și reparare erori de indexare\n• Adăugare structured data (schema.org) pentru servicii/produse\n• Monitorizare indexare timp de 7 zile\nLivrabile: Sitemap XML activ + conturi Search Console & Analytics configurate + raport indexare.',
-    'Configurare indexare & sitemap XML'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Optimizare tehnică profundă pentru performanță maximă în Google. Include:\n• Audit tehnic complet (crawl budget, canonical tags, redirect chains)\n• Optimizare structură URL și ierarhie site\n• Implementare schema.org avansat (JSON-LD)\n• Corectare erori crawl (404, 500, redirect-uri infinite)\n• Optimizare JavaScript pentru SEO (rendering, hydration)\n• Verificare și reparare probleme de indexare\n• Analiză log files (opțional, pentru site-uri mari)\n• Raport detaliat cu priorități și impact estimat\nLivrabile: Raport tehnic SEO + implementarea corecțiilor critice + documentație structură date.',
-    'SEO Tehnic Avansat'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Optimizare pentru motoare de răspuns (Google AI Overviews, ChatGPT, Perplexity). Include:\n• Analiză interogări tip întrebare ("cine", "ce", "cum", "de ce")\n• Reformulare conținut în format Q&A (întrebare-răspuns)\n• Implementare FAQ schema pe pagini cheie\n• Optimizare pentru featured snippets (poziția 0)\n• Structurare conținut cu răspunsuri concise (40-60 cuvinte)\n• Adăugare date structurate pentru liste și tabele\n• Monitorizare prezență în AI Overviews\nLivrabile: Raport AEO + pagini optimizate Q&A + ghid creare conținut AEO-friendly.',
-    'AEO - Answer Engine Optimization'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Optimizare pentru motoare generative AI (ChatGPT Search, Google SGE, Claude). Include:\n• Analiză vizibilitate brand în răspunsuri AI\n• Optimizare conținut pentru a fi citat de AI (autoritate, claritate, structură)\n• Creare pagini "hub" de autoritate în nișa ta\n• Implementare E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness)\n• Adăugare surse și citate în conținut\n• Optimizare pentru "near me" și intenție locală\n• Monitorizare mențiuni brand în AI tools\n• Strategie de digital PR pentru vizibilitate AI\nLivrabile: Raport GEO + strategie conținut AI-friendly + 3 pagini hub optimizate.',
-    'GEO - Generative Engine Optimization'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Site-ul tău găzduit și monitorizat 24/7. Include:\n• Hosting pe servere SSD în România (viteză maximă)\n• Domeniu inclus (.ro sau .com)\n• Certificat SSL (lăcățel verde în browser)\n• Backup zilnic automat (păstrat 30 zile)\n• Monitorizare uptime 24/7 (alerte dacă pică site-ul)\n• Actualizări de securitate la framework și plugin-uri\n• Suport tehnic prin email/ticket (răspuns în 24h)\n• Raport lunar: trafic, uptime, backup-uri efectuate\nLivrabile: Acces hosting + acces backup-uri + raport lunar.',
-    'Găzduire & mentenanță tehnică'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Te ajutăm cu modificările curente pe site. Include:\n• Până la 5 ore de lucru pe lună pentru actualizări\n• Modificare texte și imagini pe site\n• Adăugare articole blog (până la 4/lună)\n• Adăugare produse noi (pentru magazine online)\n• Ajustări minore de design (culori, bannere)\n• Suport prioritar prin WhatsApp/email\n• Timp de răspuns: 4 ore în zilele lucrătoare\n• Raport lunar cu orele consumate\nLivrabile: Actualizările efectuate + raport ore consumate.\nNot: Orele neutilizate nu se cumulează în luna următoare.',
-    'Actualizări conținut & suport extins'
-  ]);
-  await db.execute(`UPDATE service_catalog SET description = ? WHERE name = ?`, [
-    'Îmbunătățești constant pozițiile în Google. Include:\n• Analiză lunară a pozițiilor pentru 10 cuvinte cheie\n• Optimizare on-page pentru 2-3 pagini existente\n• 1 articol blog optimizat SEO (800+ cuvinte)\n• Construire 2-3 backlink-uri de calitate\n• Actualizare meta titluri și descrieri\n• Monitorizare trafic organic (Google Analytics)\n• Raport lunar: evoluție poziții, trafic, acțiuni efectuate\n• Ședință lunară de 30 min pentru rezultate\nLivrabile: Raport SEO lunar + acțiunile efectuate + plan pentru luna următoare.',
-    'Optimizare SEO lunară continuă'
-  ]);
+  const MASTER_SERVICES = [
+    { cat: 'Aspect & Identitate Vizuală', name: 'Wireframe-uri & structură pagini', desc: 'Structura clară a site-ului, ca un "schelet" logic al paginilor.', feats: ['Wireframe-uri pentru paginile principale', 'Amplasarea elementelor (header, conținut, footer)', 'Flux de navigare între pagini', '2 runde de revizuiri'], price: 300, unit: 'proiect', rec: 0, order: 1 },
+    { cat: 'Aspect & Identitate Vizuală', name: 'Design UI/UX complet', desc: 'Transform structura în design vizual profesional direct implementabil.', feats: ['Design personalizat pe brandul tău', 'Paletă de culori și tipografie', 'Variante desktop + mobil (responsive)', 'Ghid de stil (culori, fonturi, componente)'], price: 1200, unit: 'proiect', rec: 0, order: 2 },
+    { cat: 'Aspect & Identitate Vizuală', name: 'Kit identitate vizuală digitală', desc: 'Elementele grafice de bază pentru prezența ta online.', feats: ['3 propuneri de logo (variante inițiale)', 'Paleta de culori și fonturi recomandate', 'Variante logo (principal, secundar, favicon)', 'Ghid rapid de utilizare'], price: 800, unit: 'proiect', rec: 0, order: 3 },
+    
+    { cat: 'Construirea Site-ului', name: 'Pagina de prezentare (Landing Page)', desc: 'O singură pagină optimizată pentru a promova un produs sau serviciu cu focus pe rată de conversie.', feats: ['Design modern tip Landing Page dintr-o singură pagină lungă', 'Până la 5 secțiuni (Ex: Hero, Despre, Servicii, Testimoniale, Contact)', 'Formular de contact integrat', 'Optimizare completă pentru CTA (Call To Action)'], price: 1000, unit: 'proiect', rec: 0, order: 10 },
+    { cat: 'Construirea Site-ului', name: 'Site de prezentare (1-5 pagini)', desc: 'Site perfect pentru afaceri la început de drum, cu pagini interne și informații esențiale.', feats: ['Homepage + 4 pagini interne (Ex: Despre, Portofoliu, Servicii, Contact)', 'Design responsive perfect adaptabil pe orice ecran', 'Formular de contact și integrare hartă Google Maps', 'Viteză de încărcare optimizată'], price: 2000, unit: 'proiect', rec: 0, order: 11 },
+    { cat: 'Construirea Site-ului', name: 'Site de prezentare Complex (6-15 pagini)', desc: 'O platformă robustă, cu multiple secțiuni, pentru o companie dezvoltată.', feats: ['Până la 15 pagini construite și populate', 'Design complex cu elemente grafice avansate', 'Sistem de blog / noutăți', 'Integrare link-uri social media și abonare la newsletter'], price: 3500, unit: 'proiect', rec: 0, order: 12 },
+    { cat: 'Construirea Site-ului', name: 'Magazin online (E-commerce)', desc: 'Platformă completă de vânzări online.', feats: ['Catalog produse cu categorii structurate și filtre avansate', 'Pagini detaliate pentru produse (imagini cu zoom, variații mărime/culoare)', 'Sistem complet de coș și checkout cu validare auto', 'Integrare procesator de plăți, facturare și metode de curierat'], price: 6000, unit: 'proiect', rec: 0, order: 13 },
+    { cat: 'Construirea Site-ului', name: 'Aplicație web personalizată', desc: 'Software web custom dezvoltat de la zero, conform cerințelor funcționale unice.', feats: ['Arhitectură de baze de date custom, scalabilă', 'Sistem avansat de utilizatori cu roluri și permisiuni ierarhice', 'Dashboard cu rapoarte, statistici și grafice detaliate', 'Fluxuri logice de procesare a datelor personalizate'], price: 10000, unit: 'proiect', rec: 0, order: 14 },
 
-  const catalogCount = await db.select<{ cnt: number }[]>('SELECT COUNT(*) as cnt FROM service_catalog');
-  if (catalogCount[0]?.cnt === 0) {
-    const seedServices = [
-      // ═══════════════════════════════════════════════════════════════════════
-      // ASPECT & IDENTITATE VIZUALĂ
-      // ═══════════════════════════════════════════════════════════════════════
-      [
-        'Aspect & Identitate Vizuală',
-        'Wireframe-uri & structură pagini',
-        'Primești structura clară a site-ului, ca un "schelet" al tuturor paginilor. Include:\n• Wireframe-uri pentru homepage și toate paginile principale\n• Amplasarea elementelor (header, conținut, sidebar, footer)\n• Fluxul de navigare între pagini\n• 2 runde de revizuiri până la varianta finală\nLivrabile: Fișiere PDF cu wireframe-uri pentru fiecare pagină + schiță flux navigare.',
-        300, 'proiect', 0, 1
-      ],
-      [
-        'Aspect & Identitate Vizuală',
-        'Design UI/UX complet al interfeței',
-        'Transform structura în design vizual profesional. Include:\n• Design pentru toate paginile site-ului (în funcție de pachetul ales)\n• Paleta de culori personalizată pe brandul tău\n• Tipografie (fonturi) aleasă pentru lizibilitate maximă\n• Elemente grafice (butoane, iconițe, carduri)\n• Varianta pentru desktop + mobil (responsive)\n• 3 runde de revizuiri incluse\nLivrabile: Fișiere Figma cu design-ul final + ghid de stil (culori, fonturi, componente).',
-        1200, 'proiect', 0, 2
-      ],
-      [
-        'Aspect & Identitate Vizuală',
-        'Prototip interactiv (clickabil)',
-        'Poți "naviga" prin site înainte să fie construit. Include:\n• Toate paginile conectate între ele prin link-uri\n• Simulare interacțiuni (click butoane, meniuri dropdown, formulare)\n• Experiența reală de navigare pe desktop și mobil\n• Util pentru testarea fluxului înainte de dezvoltare\nLivrabile: Link către prototipul online + instrucțiuni de testare.',
-        500, 'proiect', 0, 3
-      ],
-      [
-        'Aspect & Identitate Vizuală',
-        'Kit identitate vizuală digitală',
-        'Elementele grafice de bază pentru prezența ta online. Include:\n• 3 propuneri de logo (variante inițiale)\n• 2 runde de revizuiri pentru logo-ul ales\n• Paleta de culori (coduri HEX, RGB, CMYK)\n• Fonturi recomandate pentru site și materiale\n• Variante logo: principal, secundar, favicon\n• Ghid rapid de utilizare\nLivrabile: Fișiere logo (PNG transparent, SVG, AI) + ghid identitate (PDF).',
-        800, 'proiect', 0, 4
-      ],
-      // ═══════════════════════════════════════════════════════════════════════
-      // CONSTRUIREA SITE-ULUI / APLICAȚIEI
-      // ═══════════════════════════════════════════════════════════════════════
-      [
-        'Construirea Site-ului / Aplicației',
-        'Site de prezentare (1-15 pagini)',
-        'Site complet pentru afacerea ta, optimizat pentru toate dispozitivele. Include:\n• 1-15 pagini (homepage + pagini interne, în funcție de nevoi)\n• Design responsive (arată perfect pe telefon, tabletă, desktop)\n• Formular de contact funcțional\n• Integrare Google Maps (dacă e cazul)\n• Link-uri către social media\n• Optimizare SEO de bază (titluri, descrieri, meta tag-uri)\n• Viteză încărcare optimizată\n• 2 runde de modificări după lansare\nLivrabile: Site funcțional pe domeniul tău + acces panou administrare + ghid utilizare.\nDurată estimată: 5-10 zile lucrătoare.',
-        2500, 'proiect', 0, 10
-      ],
-      [
-        'Construirea Site-ului / Aplicației',
-        'Magazin online (E-commerce)',
-        'Platformă completă de vânzări online. Include:\n• Catalog produse cu categorii și filtre\n• Pagina detaliată produs (imagini, descriere, recenzii)\n• Coș de cumpărături și checkout în 2 pași\n• Integrare procesator plăți (Stripe, PayU, mobilPay)\n• Generare automată facturi (opțional)\n• Panou administrare: adaugă/editează produse, vezi comenzi\n• Notificări email pentru comenzi noi\n• Integrare curier (Fan Courier, Sameday, etc.)\n• 1 oră de training pentru administrare\nLivrabile: Magazin online funcțional + documentație administrare + suport 7 zile.\nDurată estimată: 15-25 zile lucrătoare.',
-        6000, 'proiect', 0, 12
-      ],
-      [
-        'Construirea Site-ului / Aplicației',
-        'Aplicație web personalizată',
-        'Soluție software complexă, dezvoltată de la zero pentru nevoile tale. Include:\n• Analiză detaliată a cerințelor și fluxurilor de lucru\n• Arhitectură personalizată (bază de date, backend, frontend)\n• Funcționalități custom (rapoarte, automatizări, integrări API)\n• Panou administrare cu roluri și permisiuni\n• Testare completă (funcțională, performanță, securitate)\n• Documentație tehnică și ghid utilizator\n• 2 săptămâni suport post-lansare\nLivrabile: Aplicație web funcțională + cod sursă + documentație completă.\nDurată estimată: 4-8 săptămâni (în funcție de complexitate).',
-        8000, 'proiect', 0, 13
-      ],
-      // ═══════════════════════════════════════════════════════════════════════
-      // FUNCȚIONALITĂȚI & INTEGRĂRI
-      // ═══════════════════════════════════════════════════════════════════════
-      [
-        'Funcționalități & Integrări',
-        'Sistem comenzi & plăți online',
-        'Permite clienților să plătească direct pe site. Include:\n• Integrare cu un procesator de plăți (Stripe, PayU, mobilPay, Netopia)\n• Suport pentru carduri Visa, Mastercard, Maestro\n• Pagină de checkout securizată (SSL)\n• Confirmare automată a plății\n• Istoric tranzacții în panoul de administrare\n• Suport pentru plata la livrare (opțional)\n• Testare completă în mediu sandbox și producție\nLivrabile: Sistem de plăți funcțional + cont merchant configurat + ghid utilizare.',
-        1200, 'buc', 0, 20
-      ],
-      [
-        'Funcționalități & Integrări',
-        'Panou de administrare conținut (CMS)',
-        'Editezi singur conținutul site-ului, fără cunoștințe tehnice. Include:\n• Interfață intuitivă, în limba română\n• Editare texte și imagini pe toate paginile\n• Adăugare/ștergere pagini noi\n• Upload și gestionare galerie foto\n• Programare postări blog (dacă e cazul)\n• Backup automat al conținutului\n• 1 oră de training inclus\nLivrabile: Acces panou CMS + video-tutorial personalizare + suport 30 zile.',
-        1500, 'buc', 0, 21
-      ],
-      [
-        'Funcționalități & Integrări',
-        'Sistem conturi utilizatori & autentificare',
-        'Utilizatorii își creează cont și se autentifică pe site. Include:\n• Formular înregistrare (email/parolă sau social login)\n• Formular login cu "am uitat parola"\n• Profil utilizator (date personale, istoric, preferințe)\n• Roluri și permisiuni (admin, editor, utilizator standard)\n• Resetare parolă prin email\n• Securizare conturi (hash parole, protecție brute-force)\n• Opțional: autentificare prin Google/Facebook\nLivrabile: Sistem de autentificare complet funcțional + documentație.',
-        1000, 'buc', 0, 22
-      ],
-      // ═══════════════════════════════════════════════════════════════════════
-      // APLICAȚIE PE TELEFON & PWA
-      // ═══════════════════════════════════════════════════════════════════════
-      [
-        'Aplicație pe Telefon & PWA',
-        'Aplicație Android & iOS (din site-ul tău)',
-        'Transform site-ul într-o aplicație mobilă instalabilă. Include:\n• Conversia site-ului în aplicație nativă (Capacitor/Ionic)\n• Iconiță personalizată pe ecranul telefonului\n• Funcționare offline pentru conținut deja încărcat\n• Acces la funcții telefon (cameră, geolocație, notificări)\n• Publicare în Google Play Store (asistență inclusă)\n• Optimizare performanță pentru mobil\n• Testare pe dispozitive reale Android și iOS\nLivrabile: Fișiere APK (Android) și IPA (iOS) + ghid publicare în store-uri.',
-        2000, 'proiect', 0, 30
-      ],
-      [
-        'Aplicație pe Telefon & PWA',
-        'Site instalabil ca aplicație (PWA)',
-        'Site-ul tău se comportă ca o aplicație, fără descărcare din store. Include:\n• Instalare direct din browser (Chrome, Safari)\n• Funcționare offline sau cu internet slab\n• Actualizări automate (fără a merge în store)\n• Iconiță pe ecranul principal\n• Navigare fluidă, fără reîncărcări complete\n• Compatibil Android și iOS\n• Notificări push (necesită configurare separată)\nLivrabile: Site configurat ca PWA + fișier manifest + service worker.',
-        800, 'proiect', 0, 31
-      ],
-      [
-        'Aplicație pe Telefon & PWA',
-        'Notificări push pe telefon',
-        'Trimite mesaje direct pe telefonul utilizatorilor. Include:\n• Configurare serviciu push (Firebase Cloud Messaging)\n• Cerere permisiuni notificări (popup prietenos)\n• Segmentare utilizatori (opțional)\n• Programare notificări pentru mai târziu\n• Statistici: câți au deschis notificarea\n• Suport pentru notificări pe Android și iOS\n• Integrare cu panoul de administrare existent\nLivrabile: Sistem push funcțional + ghid trimitere notificări.',
-        600, 'buc', 0, 32
-      ],
-      // ═══════════════════════════════════════════════════════════════════════
-      // VIZIBILITATE PE GOOGLE (SEO)
-      // ═══════════════════════════════════════════════════════════════════════
-      [
-        'Vizibilitate pe Google (SEO)',
-        'Analiză & raport SEO tehnic',
-        'Afli ce probleme are site-ul tău în ochii Google. Include:\n• Audit complet al structurii site-ului\n• Verificare indexare în Google Search Console\n• Analiză cuvinte cheie relevante pentru nișa ta\n• Identificare erori tehnice (link-uri stricate, imagini neoptimizate)\n• Verificare viteză încărcare (Desktop & Mobil)\n• Analiză concurență (top 3 competitori)\n• Raport detaliat cu priorități de acțiune\nLivrabile: Raport PDF 10-20 pagini + fișier Excel cu toate problemele + recomandări concrete.',
-        400, 'buc', 0, 40
-      ],
-      [
-        'Vizibilitate pe Google (SEO)',
-        'Optimizare viteză & performanță',
-        'Site rapid = poziții mai bune în Google + clienți mulțumiți. Include:\n• Analiză Google PageSpeed Insights (înainte și după)\n• Compresie și optimizare imagini (fără pierdere calitate)\n• Minificare cod CSS, JavaScript, HTML\n• Implementare lazy loading pentru imagini\n• Configurare cache browser\n• Optimizare interfață bază de date (dacă e cazul)\n• Testare performanță pe 3 dispozitive diferite\nLivrabile: Raport performanță înainte/după + site optimizat (scor 90+ PageSpeed).',
-        600, 'buc', 0, 41
-      ],
-      [
-        'Vizibilitate pe Google (SEO)',
-        'Configurare indexare & sitemap XML',
-        'Asigurăm că Google găsește și indexează toate paginile tale. Include:\n• Creare sitemap XML automat actualizat\n• Configurare robots.txt pentru crawlere\n• Înregistrare site în Google Search Console\n• Înregistrare în Google Analytics 4\n• Verificare și reparare erori de indexare\n• Adăugare structured data (schema.org) pentru servicii/produse\n• Monitorizare indexare timp de 7 zile\nLivrabile: Sitemap XML activ + conturi Search Console & Analytics configurate + raport indexare.',
-        300, 'buc', 0, 42
-      ],
-      [
-        'Vizibilitate pe Google (SEO)',
-        'SEO Tehnic Avansat',
-        'Optimizare tehnică profundă pentru performanță maximă în Google. Include:\n• Audit tehnic complet (crawl budget, canonical tags, redirect chains)\n• Optimizare structură URL și ierarhie site\n• Implementare schema.org avansat (JSON-LD)\n• Corectare erori crawl (404, 500, redirect-uri infinite)\n• Optimizare JavaScript pentru SEO (rendering, hydration)\n• Verificare și reparare probleme de indexare\n• Analiză log files (opțional, pentru site-uri mari)\n• Raport detaliat cu priorități și impact estimat\nLivrabile: Raport tehnic SEO + implementarea corecțiilor critice + documentație structură date.',
-        800, 'buc', 0, 43
-      ],
-      [
-        'Vizibilitate pe Google (SEO)',
-        'AEO - Answer Engine Optimization',
-        'Optimizare pentru motoare de răspuns (Google AI Overviews, ChatGPT, Perplexity). Include:\n• Analiză interogări tip întrebare ("cine", "ce", "cum", "de ce")\n• Reformulare conținut în format Q&A (întrebare-răspuns)\n• Implementare FAQ schema pe pagini cheie\n• Optimizare pentru featured snippets (poziția 0)\n• Structurare conținut cu răspunsuri concise (40-60 cuvinte)\n• Adăugare date structurate pentru liste și tabele\n• Monitorizare prezență în AI Overviews\nLivrabile: Raport AEO + pagini optimizate Q&A + ghid creare conținut AEO-friendly.',
-        600, 'buc', 0, 44
-      ],
-      [
-        'Vizibilitate pe Google (SEO)',
-        'GEO - Generative Engine Optimization',
-        'Optimizare pentru motoare generative AI (ChatGPT Search, Google SGE, Claude). Include:\n• Analiză vizibilitate brand în răspunsuri AI\n• Optimizare conținut pentru a fi citat de AI (autoritate, claritate, structură)\n• Creare pagini "hub" de autoritate în nișa ta\n• Implementare E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness)\n• Adăugare surse și citate în conținut\n• Optimizare pentru "near me" și intenție locală\n• Monitorizare mențiuni brand în AI tools\n• Strategie de digital PR pentru vizibilitate AI\nLivrabile: Raport GEO + strategie conținut AI-friendly + 3 pagini hub optimizate.',
-        900, 'buc', 0, 45
-      ],
-      // ═══════════════════════════════════════════════════════════════════════
-      // MENTENANȚĂ LUNARĂ & SUPORT
-      // ═══════════════════════════════════════════════════════════════════════
-      [
-        'Mentenanță Lunară & Suport',
-        'Găzduire & mentenanță tehnică',
-        'Site-ul tău găzduit și monitorizat 24/7. Include:\n• Hosting pe servere SSD în România (viteză maximă)\n• Domeniu inclus (.ro sau .com)\n• Certificat SSL (lăcățel verde în browser)\n• Backup zilnic automat (păstrat 30 zile)\n• Monitorizare uptime 24/7 (alerte dacă pică site-ul)\n• Actualizări de securitate la framework și plugin-uri\n• Suport tehnic prin email/ticket (răspuns în 24h)\n• Raport lunar: trafic, uptime, backup-uri efectuate\nLivrabile: Acces hosting + acces backup-uri + raport lunar.',
-        150, 'lună', 1, 50
-      ],
-      [
-        'Mentenanță Lunară & Suport',
-        'Actualizări conținut & suport extins',
-        'Te ajutăm cu modificările curente pe site. Include:\n• Până la 5 ore de lucru pe lună pentru actualizări\n• Modificare texte și imagini pe site\n• Adăugare articole blog (până la 4/lună)\n• Adăugare produse noi (pentru magazine online)\n• Ajustări minore de design (culori, bannere)\n• Suport prioritar prin WhatsApp/email\n• Timp de răspuns: 4 ore în zilele lucrătoare\n• Raport lunar cu orele consumate\nLivrabile: Actualizările efectuate + raport ore consumate.\nNot: Orele neutilizate nu se cumulează în luna următoare.',
-        250, 'lună', 1, 51
-      ],
-      [
-        'Mentenanță Lunară & Suport',
-        'Optimizare SEO lunară continuă',
-        'Îmbunătățești constant pozițiile în Google.',
-        JSON.stringify([
-          'Analiză lunară 10 cuvinte cheie',
-          '1 articol blog optimizat SEO',
-          'Construire backlink-uri de calitate',
-          'Monitorizare trafic Google Analytics',
-          'Raport lunar de performanță'
-        ]),
-        350, 'lună', 1, 52
-      ],
-    ];
-    for (const [cat, name, desc, feats, price, unit, recurring, order] of seedServices) {
+    { cat: 'Funcționalități & Integrări', name: 'SEO Inițial (Pentru site-uri noi)', desc: 'Toate implementările tehnice necesare de la bun început la lansarea unui site pentru a asigura indexarea corectă.', feats: ['Optimizare On-Page (Titluri, Descrieri) pt toate paginile', 'Generare și submitere Sitemap XML pentru crawlere', 'Configurare Google Search Console & Google Analytics 4', 'Structură semantică HTML (taguri H1-H6) definită corect', 'Optimizarea vitezei de bază (Minificare cod, Lazy Loading imagini, Caching eficent)'], price: 600, unit: 'proiect', rec: 0, order: 20 },
+    { cat: 'Funcționalități & Integrări', name: 'Sistem comenzi & plăți online', desc: 'Configurare terminal de plăți (POS virtual) securizat pe site-ul tău.', feats: ['Integrare procesator românesc (ex: Stripe / PayU / Netopia)', 'Testare sistem plăți complet în Mediu Sandbox de dezvoltare', 'Configurare facturare fiscală automată la reușita plății', 'Interfață backend cu status istoric plăți (plătit, refuzat, etc)'], price: 1200, unit: 'proiect', rec: 0, order: 21 },
+    { cat: 'Funcționalități & Integrări', name: 'Panou de administrare conținut (CMS)', desc: 'Schimbi rapid si usor textele si imaginile de pe site fara ajutorul unui programator.', feats: ['Instalare și parametrizare sistem modern de management (CMS)', 'Dezvoltare blocuri de conținut editabile (Text, Imagine, Galerie) personalizate', 'Gestiune facilă centralizată de fișiere media (fotografii, PDF-uri)', 'Sesiune video de asistență / training pentru învățarea utilizării sistemului'], price: 1500, unit: 'proiect', rec: 0, order: 22 },
+
+    { cat: 'Mentenanță Lunară & Suport', name: 'Găzduire & mentenanță tehnică', desc: 'Asigurăm disponibilitatea 99.9% și securitatea tehnică a site-ului tău lună de lună.', feats: ['Găzduire web pe un server rapid și localizat în Europa (SSD NVMe)', 'Certificat SSL automat reînnoit pentru canal securizat', 'Sistem de Backup automat lunar sau săptămânal testat', 'Alerte Uptime și monitorizare ping la 5 minute', 'Update-uri majore de securitate și pachete software'], price: 200, unit: 'lună', rec: 1, order: 50 },
+    { cat: 'Mentenanță Lunară & Suport', name: 'Actualizări conținut & suport extins', desc: 'Suntem dispuși să lucrăm constant cu tine. Ajustări lunare și asistență promptă.', feats: ['Aprox. 5 ore de lucru incluse pe lună rezervate pentru modificări', 'Ajustări elemente de design / introducere conținut și articole', 'Asistență tehnică prioritară (Răspuns rapid 4-8 ore) pe canal de email/telefon'], price: 500, unit: 'lună', rec: 1, order: 51 },
+    { cat: 'Mentenanță Lunară & Suport', name: 'Optimizare SEO lunară continuă', desc: 'Investiție lunară care crește vizibilitatea, autoritatea și atrage organic trafic relevant.', feats: ['Monitorizare evoluție clasament cuvinte cheie prin tool dedicat', 'Concept și adaptare pentru 1-2 articole/pagini cu focus pe ranking', 'Generare linkbuilding organic (atragere backlink-uri în publicații)', 'Optimizări tehnice recurente, A/B Testing pe titluri pagini', 'Emitere raport detaliat vizual de performanță (PDF) lunar'], price: 1000, unit: 'lună', rec: 1, order: 52 },
+  ];
+
+  for (const svc of MASTER_SERVICES) {
+    // Încercăm să aducem la zi itemul vizat fix după nume
+    const existing = await db.select<{id: number}[]>('SELECT id FROM service_catalog WHERE name = ?', [svc.name]);
+    if (existing.length > 0) {
+      // Actualizăm descrierea, caracteristicile (features), pentru corectitudine
       await db.execute(
-        'INSERT OR IGNORE INTO service_catalog(category,name,description,features,default_price,unit,is_recurring,sort_order) VALUES(?,?,?,?,?,?,?,?)',
-        [cat, name, desc, feats, price, unit, recurring, order]
+        'UPDATE service_catalog SET category=?, description=?, features=?, sort_order=? WHERE name=?',
+        [svc.cat, svc.desc, JSON.stringify(svc.feats), svc.order, svc.name]
+      );
+    } else {
+      // Altfel, îl introducem pe curat
+      await db.execute(
+        'INSERT INTO service_catalog(category,name,description,features,default_price,unit,is_recurring,sort_order) VALUES(?,?,?,?,?,?,?,?)',
+        [svc.cat, svc.name, svc.desc, JSON.stringify(svc.feats), svc.price, svc.unit, svc.rec, svc.order]
       );
     }
   }
+
+  // Renamed retro-compatibility fixes for user data consistency
+  await db.execute(`UPDATE service_catalog SET name = 'Site de prezentare Complex (6-15 pagini)' WHERE name = 'Site de prezentare (1-15 pagini)'`);
 }
 
 export async function getSetting(key: string): Promise<string> {

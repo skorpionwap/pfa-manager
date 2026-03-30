@@ -33,6 +33,7 @@ export default function Layout() {
   const [geminiOpen, setGeminiOpen] = useState(false);
   const [ofertaGeminiOpen, setOfertaGeminiOpen] = useState(false);
   const [ofertaGeminiContext, setOfertaGeminiContext] = useState("");
+  const [ofertaGeminiHistory, setOfertaGeminiHistory] = useState<any[]>([]);
 
   const refreshMode = () => {
     if (!isTauri()) return;
@@ -57,9 +58,10 @@ export default function Layout() {
     };
 
     const ofertaHandler = (e: Event) => {
-      const { open, context } = (e as CustomEvent).detail;
+      const { open, context, history } = (e as CustomEvent).detail;
       if (typeof open === "boolean") setOfertaGeminiOpen(open);
       if (typeof context === "string") setOfertaGeminiContext(context);
+      if (history !== undefined) setOfertaGeminiHistory(history);
     };
 
     window.addEventListener("settings-changed", handler);
@@ -192,6 +194,7 @@ export default function Layout() {
           window.dispatchEvent(new CustomEvent("oferta-gemini", { detail: { open: false } }));
         }}
         quoteContext={ofertaGeminiContext}
+        initialHistory={ofertaGeminiHistory}
         onApplyToNotes={text =>
           window.dispatchEvent(new CustomEvent("oferta-gemini-note", { detail: { text } }))
         }

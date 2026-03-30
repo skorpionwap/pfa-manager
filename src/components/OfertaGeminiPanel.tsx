@@ -11,6 +11,7 @@ interface OfertaGeminiPanelProps {
   open: boolean;
   onClose: () => void;
   quoteContext: string;
+  initialHistory?: Message[];
   onApplyToNotes: (text: string) => void;
 }
 
@@ -21,7 +22,7 @@ const QUICK_ACTIONS = [
   { icon: FileText,      label: "Generează condiții standard",  prompt: "Formulează o secțiune de Note și Condiții generale pentru această ofertă — profesionistă, prietenoasă, 4-5 rânduri." },
 ];
 
-export default function OfertaGeminiPanel({ open, onClose, quoteContext, onApplyToNotes }: OfertaGeminiPanelProps) {
+export default function OfertaGeminiPanel({ open, onClose, quoteContext, initialHistory, onApplyToNotes }: OfertaGeminiPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,12 +35,25 @@ export default function OfertaGeminiPanel({ open, onClose, quoteContext, onApply
     }
   }, [messages, loading]);
 
-  // Auto-analyze on first open
+  // Handle open / load history
   useEffect(() => {
-    if (open && messages.length === 0) {
-      runPrompt("Fă o analiză scurtă a ofertei curente și spune-mi 2-3 puncte forte și ce s-ar putea îmbunătăți.");
+    if (open) {
+      if (initialHistory && initialHistory.length > 0) {
+        setMessages(initialHistory);
+      } else if (messages.length === 0) {
+        runPrompt("Fă o analiză scurtă a ofertei curente și spune-mi 2-3 puncte forte și ce s-ar putea îmbunătăți.");
+      }
+    } else {
+      setMessages([]); // Reset on close so next time it loads fresh
     }
   }, [open]);
+
+  // Dispatch history updates back to parent
+  useEffect(() => {
+    if (open && messages.length > 0) {
+      window.dispatchEvent(new CustomEvent("oferta-gemini-history-change", { detail: { messages } }));
+    }
+  }, [messages, open]);
 
   const runPrompt = async (question: string) => {
     if (loading) return;

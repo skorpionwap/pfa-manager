@@ -48,6 +48,7 @@ export interface Contract {
   source?: "mine" | "client";
   file_path?: string;
   notes: string;
+  chat_history?: string;
   created_at: string;
 }
 
@@ -123,5 +124,6 @@ export interface Quote {
   valid_until: string;
   status: "draft" | "sent" | "accepted" | "rejected" | "expired";
   notes: string;
+  chat_history?: string;
   created_at: string;
 }
