@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {
   getDb, peekQuoteNumber, bumpQuoteCounter,
-  peekInvoiceNumber, setSetting
+  peekInvoiceNumber
 } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import type {

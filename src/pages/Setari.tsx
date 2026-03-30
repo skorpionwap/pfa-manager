@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw, Palette, Bot, Eye, EyeOff, FileText, Loader2, RefreshCw, ListPlus, Trash2, Plus } from "lucide-react";
+import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw, Palette, Bot, Eye, EyeOff, FileText, Loader2, RefreshCw } from "lucide-react";
 import { getDb, setSetting, isTauri } from "@/lib/db";
 import { analyzeLegislation, listGeminiModels, type LegislationAnalysis, type GeminiModelInfo } from "@/lib/gemini";
 import { FISCAL, FISCAL_DEFAULTS } from "@/lib/fiscal";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/Toast";
-import type { OperatingMode, PfaMode, ServiceCatalogItem } from "@/types";
+import type { OperatingMode, PfaMode } from "@/types";
 
 const DATA_SECTIONS = [
   {
