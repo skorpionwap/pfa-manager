@@ -84,6 +84,16 @@ async function callGemini(prompt: string): Promise<string> {
   return invoke<string>("call_gemini", { apiKey, model, prompt });
 }
 
+export interface ChatMessage {
+  role: "user" | "ai";
+  text: string;
+}
+
+async function callGeminiChat(messages: ChatMessage[]): Promise<string> {
+  const [apiKey, model] = await Promise.all([getApiKey(), getModel()]);
+  return invoke<string>("call_gemini_chat", { apiKey, model, messages });
+}
+
 function stripJsonFences(raw: string): string {
   return raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
 }
@@ -222,6 +232,18 @@ Răspunde concis și practic în română. Nu da sfaturi juridice formale.`;
 export async function askFiscalQuestion(question: string, context: string): Promise<string> {
   const prompt = `${context}\n\nÎntrebare: ${question}`;
   return callGemini(prompt);
+}
+
+/// Chat version that includes full conversation history
+export async function askFiscalQuestionChat(question: string, context: string, history: ChatMessage[]): Promise<string> {
+  // Build messages array for Gemini API
+  // Format: context goes first as "user" (system instruction), then conversation history, then new question
+  const messages: ChatMessage[] = [
+    { role: "user", text: `[INSTRUCȚIUNI SISTEM - IGNOREĂ ACEST RĂSPUNS]\n\n${context}` }, // System prompt as first user message
+    ...history,
+    { role: "user", text: question }
+  ];
+  return callGeminiChat(messages);
 }
 
 // ── Faza 5: Legislation monitor ───────────────────────────────────────────────

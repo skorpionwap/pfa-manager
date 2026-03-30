@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Bot, Send, Loader2, X, MessageSquare, Info } from "lucide-react";
 import { getDb, getSetting, isTauri } from "@/lib/db";
-import { askFiscalQuestion } from "@/lib/gemini";
+import { askFiscalQuestionChat } from "@/lib/gemini";
 
 interface Message {
   role: "user" | "ai";
@@ -60,14 +60,15 @@ Răspunde concis, prietenos și util în limba română.`;
   const sendMessage = async () => {
     const q = input.trim();
     if (!q || loading) return;
-    
+
     setMessages(prev => [...prev, { role: "user", text: q }]);
     setInput("");
     setLoading(true);
 
     try {
       const context = await buildGlobalContext();
-      const answer = await askFiscalQuestion(q, context);
+      // Include full conversation history for chat memory
+      const answer = await askFiscalQuestionChat(q, context, messages);
       setMessages(prev => [...prev, { role: "ai", text: answer }]);
     } catch (e) {
       setMessages(prev => [...prev, { role: "ai", text: `Eroare: ${e instanceof Error ? e.message : String(e)}` }]);

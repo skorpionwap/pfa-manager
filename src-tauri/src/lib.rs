@@ -3,6 +3,12 @@ use std::fs;
 
 // ── Model list structs ────────────────────────────────────────────────────────
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ChatMessage {
+    role: String,
+    text: String,
+}
+
 #[derive(serde::Serialize)]
 struct GeminiModel {
     name: String,
@@ -121,6 +127,24 @@ async fn call_gemini(api_key: String, model: String, prompt: String) -> Result<S
     gemini_call(&reqwest::Client::new(), &api_key, &model, body).await
 }
 
+/// Chat call with full conversation history for memory
+#[tauri::command]
+async fn call_gemini_chat(api_key: String, model: String, messages: Vec<ChatMessage>) -> Result<String, String> {
+    // Convert frontend messages to Gemini API format
+    let contents: Vec<serde_json::Value> = messages.into_iter()
+        .map(|m| {
+            let role = if m.role == "user" { "user" } else { "model" };
+            serde_json::json!({
+                "role": role,
+                "parts": [{"text": m.text}]
+            })
+        })
+        .collect();
+
+    let body = serde_json::json!({ "contents": contents });
+    gemini_call(&reqwest::Client::new(), &api_key, &model, body).await
+}
+
 /// Generic file analysis — receipt scanning (PDF, JPG, PNG, WebP)
 #[tauri::command]
 async fn analyze_file(api_key: String, model: String, file_path: String, prompt: String) -> Result<String, String> {
@@ -168,7 +192,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![list_gemini_models, analyze_contract_pdf, analyze_file, call_gemini])
+        .invoke_handler(tauri::generate_handler![list_gemini_models, analyze_contract_pdf, analyze_file, call_gemini, call_gemini_chat])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

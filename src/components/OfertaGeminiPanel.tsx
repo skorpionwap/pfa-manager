@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Send, Loader2, X, Sparkles, ClipboardList, DollarSign, FileText } from "lucide-react";
-import { askFiscalQuestion } from "@/lib/gemini";
+import { askFiscalQuestionChat } from "@/lib/gemini";
 
 interface Message {
   role: "user" | "ai";
@@ -64,7 +64,8 @@ export default function OfertaGeminiPanel({ open, onClose, quoteContext, initial
     setMessages(prev => [...prev, { role: "user", text: question }]);
     setLoading(true);
     try {
-      const answer = await askFiscalQuestion(question, quoteContext);
+      // Include full conversation history for chat memory
+      const answer = await askFiscalQuestionChat(question, quoteContext, messages);
       setMessages(prev => [...prev, { role: "ai", text: answer }]);
     } catch (e) {
       setMessages(prev => [...prev, { role: "ai", text: `Eroare: ${e instanceof Error ? e.message : String(e)}` }]);
