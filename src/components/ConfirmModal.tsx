@@ -18,7 +18,7 @@ export default function ConfirmModal({ message, onConfirm, onCancel }: ConfirmMo
     >
       <div
         style={{
-          background: "var(--bg-card)", border: "1px solid var(--bd)",
+          background: "var(--bg-base)", border: "1px solid var(--border-md)",
           borderRadius: 12, padding: "24px 28px", minWidth: 320, maxWidth: 420,
           boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
           display: "flex", flexDirection: "column", gap: 20,
