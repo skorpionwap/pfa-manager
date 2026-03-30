@@ -72,6 +72,12 @@ export default function Layout() {
     };
   }, []);
 
+  // Sync panel open state to body so modal-overlay can exclude the panel column
+  useEffect(() => {
+    document.body.toggleAttribute("data-oferta-panel", ofertaGeminiOpen);
+    return () => document.body.removeAttribute("data-oferta-panel");
+  }, [ofertaGeminiOpen]);
+
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--bg-base)" }}>
 

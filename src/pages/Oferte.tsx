@@ -2,23 +2,22 @@ import { useEffect, useState, useRef } from "react";
 import ConfirmModal from "@/components/ConfirmModal";
 import {
   Plus, X, Trash2, FileText,
-  Printer, Eye, Zap, FileSignature
+  Printer, Eye, Zap, FileSignature, ListPlus, Bot
 } from "lucide-react";
 import {
   getDb, peekQuoteNumber, bumpQuoteCounter,
-  peekInvoiceNumber
+  peekInvoiceNumber, setSetting
 } from "@/lib/db";
 import { useToast } from "@/components/Toast";
-import type { 
-  Client, Quote, QuoteItem, ServiceCatalogItem, 
-  OperatingMode, Settings 
+import type {
+  Client, Quote, QuoteItem, ServiceCatalogItem,
+  OperatingMode, Settings
 } from "@/types";
 import { useNavigate } from "react-router-dom";
 import StatusDropdown from "@/components/StatusDropdown";
 import QuoteTipizat from "@/components/QuoteTipizat";
 import FieldLabel from "@/components/FieldLabel";
 import ItemsTable from "@/components/ItemsTable";
-import OfertaGeminiPanel from "@/components/OfertaGeminiPanel";
 
 // Status options
 type Status = Quote["status"];
@@ -87,6 +86,9 @@ export default function Oferte() {
   const [notes, setNotes] = useState("");
   
   const [geminiPanelOpen, setGeminiPanelOpen] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<"oferte" | "catalog">("oferte");
+  const [editingSvc, setEditingSvc] = useState<Partial<ServiceCatalogItem> | null>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -292,6 +294,38 @@ export default function Oferte() {
   const handlePrint = () => setShowPrint(true);
   const getClient = (q: Quote) => clients.find(c => c.id === q.client_id);
 
+  const handleSaveCatalogItem = async () => {
+    if (!editingSvc?.name) return;
+    const db = await getDb();
+    try {
+      if (editingSvc.id) {
+        await db.execute(
+          "UPDATE service_catalog SET category=?, name=?, description=?, default_price=?, unit=?, is_recurring=?, sort_order=? WHERE id=?",
+          [editingSvc.category, editingSvc.name, editingSvc.description || "", editingSvc.default_price || 0, editingSvc.unit || "buc", editingSvc.is_recurring ? 1 : 0, editingSvc.sort_order || 0, editingSvc.id]
+        );
+      } else {
+        await db.execute(
+          "INSERT INTO service_catalog (category, name, description, default_price, unit, is_recurring, sort_order) VALUES (?,?,?,?,?,?,?)",
+          [editingSvc.category || "General", editingSvc.name, editingSvc.description || "", editingSvc.default_price || 0, editingSvc.unit || "buc", editingSvc.is_recurring ? 1 : 0, editingSvc.sort_order || 0]
+        );
+      }
+      setEditingSvc(null);
+      const rows = await db.select<ServiceCatalogItem[]>("SELECT * FROM service_catalog ORDER BY sort_order ASC");
+      setCatalog(rows);
+      toast("Catalog actualizat");
+    } catch (e) {
+      toast("Eroare la salvare item catalog", "error");
+    }
+  };
+
+  const handleDeleteCatalogItem = async (id: number) => {
+    if (!confirm("Ești sigur că ștergi acest serviciu din catalog?")) return;
+    const db = await getDb();
+    await db.execute("DELETE FROM service_catalog WHERE id=?", [id]);
+    setCatalog(prev => prev.filter(i => i.id !== id));
+    toast("Serviciu șters");
+  };
+
   const addServiceFromCatalog = (serviceId: number, isSub: boolean) => {
     const svc = catalog.find(c => c.id === serviceId);
     if (!svc) return;
@@ -412,16 +446,31 @@ Răspunde concis și practic în română.`;
           </p>
         </div>
         <div style={{ display: "flex", gap: 12 }}>
-          <button className="btn btn-ghost" onClick={() => navigate("/setari")}>
-            Catalog Servicii
-          </button>
           <button className="btn btn-primary" onClick={openNew}>
             <Plus size={14} strokeWidth={2.5} /> Ofertă nouă
           </button>
         </div>
       </div>
 
-      <div className="card">
+      {/* Tab Control */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 32, background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "var(--r-xl)", padding: 4, width: "fit-content" }}>
+        <button
+          onClick={() => setActiveTab("oferte")}
+          className={activeTab === "oferte" ? "btn-tab active" : "btn-tab"}
+        >
+          <FileText size={15} /> Oferte
+        </button>
+        <button
+          onClick={() => setActiveTab("catalog")}
+          className={activeTab === "catalog" ? "btn-tab active" : "btn-tab"}
+        >
+          <ListPlus size={15} /> Catalog Servicii
+        </button>
+      </div>
+
+      {/* Oferte List Tab */}
+      {activeTab === "oferte" && (
+        <div className="card">
         <table className="data-table">
           <thead>
             <tr>
@@ -477,6 +526,64 @@ Răspunde concis și practic în română.`;
           </tbody>
         </table>
       </div>
+      )}
+
+      {/* Catalog Servicii Tab */}
+      {activeTab === "catalog" && (
+        <div className="card" style={{ overflow: "hidden", border: "1px solid var(--border-md)" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-1)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 26, height: 26, borderRadius: "var(--r-sm)", background: "var(--blue-dim)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ListPlus size={13} color="var(--blue)" />
+              </div>
+              <span style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 13, color: "var(--tx-1)" }}>
+                Catalog Servicii (Oferte)
+              </span>
+            </div>
+            <button className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setEditingSvc({ name: "", category: "General", default_price: 0, unit: "buc", is_recurring: false })}>
+              <Plus size={12} /> Adaugă serviciu
+            </button>
+          </div>
+
+          <div style={{ padding: "0" }}>
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-base)", display: "grid", gridTemplateColumns: "1fr 100px 80px 40px", gap: 12, fontSize: 11, fontWeight: 700, color: "var(--tx-3)", textTransform: "uppercase" }}>
+              <span>Nume Serviciu / Categorie</span>
+              <span style={{ textAlign: "right" }}>Preț (lei)</span>
+              <span style={{ textAlign: "center" }}>Tip</span>
+              <span></span>
+            </div>
+            {catalog.map(item => (
+              <div key={item.id} className="catalog-row" style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "1fr 100px 80px 40px", gap: 12, alignItems: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--tx-1)" }}>{item.name}</span>
+                  <span style={{ fontSize: 11, color: "var(--tx-4)" }}>{item.category}</span>
+                </div>
+                <div style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600 }}>
+                  {item.default_price.toLocaleString()} lei
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: item.is_recurring ? "var(--blue-dim)" : "var(--bg-3)", color: item.is_recurring ? "var(--blue)" : "var(--tx-3)" }}>
+                    {item.is_recurring ? "RECURENT" : "PROIECT"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button className="btn btn-ghost" style={{ padding: 4 }} onClick={() => setEditingSvc(item)} title="Editează">
+                    <Bot size={12} />
+                  </button>
+                  <button className="btn btn-danger-ghost" style={{ padding: 4 }} onClick={() => handleDeleteCatalogItem(item.id)} title="Șterge">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {catalog.length === 0 && (
+              <div style={{ padding: 40, textAlign: "center", color: "var(--tx-4)", fontSize: 12 }}>
+                Nu ai servicii în catalog. Folosește butonul de sus pentru a adăuga.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal Formular Ofertă */}
       {showForm && (
@@ -633,9 +740,9 @@ Răspunde concis și practic în română.`;
 
             </div>
 
-            <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button className="btn btn-ghost" onClick={closeForm}>Anulează</button>
-              <button className="btn btn-primary" onClick={save}>
+            <div style={{ padding: "12px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: 12 }} onClick={closeForm}>Anulează</button>
+              <button className="btn btn-primary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={save}>
                 {editing ? "Salvează Modificări" : "Creează Ofertă"}
               </button>
             </div>
@@ -673,6 +780,54 @@ Răspunde concis și practic în română.`;
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
+      )}
+
+      {/* Modal Editare Serviciu */}
+      {editingSvc && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setEditingSvc(null)}>
+          <div className="modal" style={{ width: 450 }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>{editingSvc.id ? "Editează Serviciu" : "Serviciu Nou"}</h3>
+              <button className="btn btn-ghost" style={{ padding: 6 }} onClick={() => setEditingSvc(null)}><X size={16} /></button>
+            </div>
+            <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Nume Serviciu</div>
+                <input className="field" value={editingSvc.name || ""} onChange={e => setEditingSvc({ ...editingSvc, name: e.target.value })} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Categorie</div>
+                  <input className="field" value={editingSvc.category || ""} onChange={e => setEditingSvc({ ...editingSvc, category: e.target.value })} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Ordine sortare</div>
+                  <input className="field" type="number" value={editingSvc.sort_order || 0} onChange={e => setEditingSvc({ ...editingSvc, sort_order: Number(e.target.value) })} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Preț default (lei)</div>
+                  <input className="field" type="number" value={editingSvc.default_price || 0} onChange={e => setEditingSvc({ ...editingSvc, default_price: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Unitate</div>
+                  <input className="field" value={editingSvc.unit || "buc"} onChange={e => setEditingSvc({ ...editingSvc, unit: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+                  <input type="checkbox" checked={!!editingSvc.is_recurring} onChange={e => setEditingSvc({ ...editingSvc, is_recurring: e.target.checked })} />
+                  Acest serviciu este recurent (pentru Abonament)
+                </label>
+              </div>
+            </div>
+            <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setEditingSvc(null)}>Anulează</button>
+              <button className="btn btn-primary" onClick={handleSaveCatalogItem}>Salvează</button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

@@ -163,6 +163,31 @@ select.field option {
 .btn-danger-ghost { background: transparent; color: var(--tx-3); border: none; }
 .btn-danger-ghost:hover { color: var(--red); }
 
+/* Tab buttons */
+.btn-tab {
+  flex: 1;
+  padding: 7px 14px;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--tx-3);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+}
+.btn-tab.active {
+  background: var(--bg-1);
+  color: var(--ac);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-md);
+}
+
 /* Table */
 .data-table { width: 100%; border-collapse: collapse; }
 .data-table th {
@@ -194,6 +219,10 @@ select.field option {
   justify-content: center;
   z-index: 100;
   backdrop-filter: blur(4px);
+}
+/* When the Gemini quote panel is open, keep the overlay out of the panel column */
+[data-oferta-panel] .modal-overlay {
+  right: 400px;
 }
 .modal {
   background: var(--bg-2);
