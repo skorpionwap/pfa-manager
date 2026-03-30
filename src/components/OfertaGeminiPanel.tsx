@@ -139,16 +139,45 @@ export default function OfertaGeminiPanel({ open, onClose, quoteContext, onApply
               {m.text}
             </div>
             {m.role === "ai" && (
-              <button
-                onClick={() => onApplyToNotes(m.text)}
-                style={{
-                  fontSize: 10, fontWeight: 600, color: "var(--tx-3)",
-                  background: "none", border: "none", cursor: "pointer", padding: "2px 4px",
-                  display: "flex", alignItems: "center", gap: 4,
-                }}
-              >
-                ↓ Adaugă la note
-              </button>
+              <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+                <button
+                  onClick={() => onApplyToNotes(m.text)}
+                  style={{
+                    fontSize: 10, fontWeight: 600, color: "var(--tx-3)",
+                    background: "none", border: "none", cursor: "pointer", padding: "2px 4px",
+                    display: "flex", alignItems: "center", gap: 4,
+                  }}
+                >
+                  ↓ Adaugă la note
+                </button>
+                
+                {m.text.includes("<config>") && (
+                  <button
+                    onClick={() => {
+                      const match = m.text.match(/<config>([\s\S]*?)<\/config>/);
+                      if (match && match[1]) {
+                        try {
+                          const config = JSON.parse(match[1]);
+                          // Dispatch event with config
+                          window.dispatchEvent(new CustomEvent("oferta-gemini-note", { 
+                            detail: { config } 
+                          }));
+                        } catch(e) {
+                          console.error("Failed to parse AI config", e);
+                        }
+                      }
+                    }}
+                    style={{
+                      fontSize: 10, fontWeight: 700, color: "var(--ac)",
+                      background: "var(--ac-dim)", border: "1px solid var(--ac-glow)", 
+                      borderRadius: 4, cursor: "pointer", padding: "2px 8px",
+                      display: "flex", alignItems: "center", gap: 4,
+                    }}
+                  >
+                    <Sparkles size={10} /> Aplică configurația AI
+                  </button>
+                )}
+              </div>
             )}
           </div>
         ))}

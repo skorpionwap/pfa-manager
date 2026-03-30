@@ -102,6 +102,7 @@ async function initSchema(db: Database) {
       category TEXT NOT NULL DEFAULT 'general',
       name TEXT NOT NULL,
       description TEXT DEFAULT '',
+      features TEXT DEFAULT '[]',
       default_price REAL DEFAULT 0,
       unit TEXT DEFAULT 'buc',
       is_recurring INTEGER DEFAULT 0,
@@ -110,6 +111,9 @@ async function initSchema(db: Database) {
       UNIQUE(category, name)
     );
   `);
+
+  // Simple migration for existing catalogs
+  try { await db.execute("ALTER TABLE service_catalog ADD COLUMN features TEXT DEFAULT '[]'"); } catch(e) {}
 
   // ── Oferte ──────────────────────────────────────────────────────────────────
   await db.execute(`
@@ -401,14 +405,21 @@ async function initSchema(db: Database) {
       [
         'Mentenanță Lunară & Suport',
         'Optimizare SEO lunară continuă',
-        'Îmbunătățești constant pozițiile în Google. Include:\n• Analiză lunară a pozițiilor pentru 10 cuvinte cheie\n• Optimizare on-page pentru 2-3 pagini existente\n• 1 articol blog optimizat SEO (800+ cuvinte)\n• Construire 2-3 backlink-uri de calitate\n• Actualizare meta titluri și descrieri\n• Monitorizare trafic organic (Google Analytics)\n• Raport lunar: evoluție poziții, trafic, acțiuni efectuate\n• Ședință lunară de 30 min pentru rezultate\nLivrabile: Raport SEO lunar + acțiunile efectuate + plan pentru luna următoare.',
+        'Îmbunătățești constant pozițiile în Google.',
+        JSON.stringify([
+          'Analiză lunară 10 cuvinte cheie',
+          '1 articol blog optimizat SEO',
+          'Construire backlink-uri de calitate',
+          'Monitorizare trafic Google Analytics',
+          'Raport lunar de performanță'
+        ]),
         350, 'lună', 1, 52
       ],
     ];
-    for (const [cat, name, desc, price, unit, recurring, order] of seedServices) {
+    for (const [cat, name, desc, feats, price, unit, recurring, order] of seedServices) {
       await db.execute(
-        'INSERT OR IGNORE INTO service_catalog(category,name,description,default_price,unit,is_recurring,sort_order) VALUES(?,?,?,?,?,?,?)',
-        [cat, name, desc, price, unit, recurring, order]
+        'INSERT OR IGNORE INTO service_catalog(category,name,description,features,default_price,unit,is_recurring,sort_order) VALUES(?,?,?,?,?,?,?,?)',
+        [cat, name, desc, feats, price, unit, recurring, order]
       );
     }
   }

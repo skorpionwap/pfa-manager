@@ -83,6 +83,7 @@ export interface ServiceCatalogItem {
   category: string;
   name: string;
   description: string;
+  features?: string; // JSON string array or newline separated
   default_price: number;
   unit: string;
   is_recurring: boolean;
@@ -93,6 +94,7 @@ export interface ServiceCatalogItem {
 export interface QuoteItem {
   service_id?: number;
   description: string;
+  features?: string[]; // Structured deliverables
   quantity: number;
   unit: string;
   unit_price: number;

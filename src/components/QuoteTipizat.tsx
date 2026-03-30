@@ -77,8 +77,15 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
             <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
               <td style={{ padding: "16px", fontSize: 14 }}>
                 <div style={{ fontWeight: 600, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{it.description}</div>
+                {it.features && it.features.length > 0 && (
+                  <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12, color: "#555" }}>
+                    {it.features.map((feat, idx) => (
+                      <li key={idx} style={{ marginBottom: 4 }}>{feat}</li>
+                    ))}
+                  </ul>
+                )}
               </td>
-              <td style={{ padding: "16px", textAlign: "right", fontWeight: 700 }}>
+              <td style={{ padding: "16px", textAlign: "right", fontWeight: 700, verticalAlign: "top" }}>
                 {it.total.toLocaleString()}
               </td>
             </tr>
@@ -125,9 +132,16 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
               {quote.subscription_items.map((it, i) => (
                 <tr key={i} style={{ borderBottom: "1px dashed #eee" }}>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>
-                    <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{it.description}</div>
+                    <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, fontWeight: 600 }}>{it.description}</div>
+                    {it.features && it.features.length > 0 && (
+                      <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "#555" }}>
+                        {it.features.map((feat, idx) => (
+                          <li key={idx} style={{ marginBottom: 2 }}>{feat}</li>
+                        ))}
+                      </ul>
+                    )}
                   </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>
+                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600, verticalAlign: "top" }}>
                     {it.total.toLocaleString()} RON / lună
                   </td>
                 </tr>

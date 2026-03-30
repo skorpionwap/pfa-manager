@@ -93,11 +93,39 @@ export default function Oferte() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Listen for notes applied from the Gemini panel (rendered in Layout)
+  // Listen for notes or full config applied from the Gemini panel (rendered in Layout)
   useEffect(() => {
     const handler = (e: Event) => {
-      const { text } = (e as CustomEvent).detail;
-      setNotes(prev => prev ? prev + "\n\n" + text : text);
+      const { text, config } = (e as CustomEvent).detail;
+      if (config) {
+        // AI Wizard Config Application
+        if (config.title) setTitle(config.title);
+        if (config.project_type) setProjectType(config.project_type);
+        if (config.page_count) setPageCount(config.page_count);
+        if (config.delivery_days) setDeliveryDays(config.delivery_days);
+        if (config.items) {
+          setItems(config.items.map((it: any) => ({
+            ...emptyItem(),
+            ...it,
+            total: (it.quantity || 1) * (it.unit_price || 0)
+          })));
+        }
+        if (config.has_subscription !== undefined) {
+          setHasSubscription(config.has_subscription);
+          if (config.subscription_items) {
+            setSubscriptionItems(config.subscription_items.map((it: any) => ({
+              ...emptyItem(),
+              ...it,
+              total: (it.quantity || 1) * (it.unit_price || 0)
+            })));
+          }
+          if (config.subscription_months) setSubscriptionMonths(config.subscription_months);
+        }
+        if (config.notes) setNotes(prev => prev ? prev + "\n\n" + config.notes : config.notes);
+        toast("Configurație AI aplicată!", "success");
+      } else if (text) {
+        setNotes(prev => prev ? prev + "\n\n" + text : text);
+      }
     };
     // Close panel if form is closed externally
     const closeHandler = (e: Event) => {
@@ -110,7 +138,7 @@ export default function Oferte() {
       window.removeEventListener("oferta-gemini-note", handler);
       window.removeEventListener("oferta-gemini", closeHandler);
     };
-  }, []);
+  }, [clients]); // Add dependencies if needed for toast or state setters
 
   // Close panel when form is closed
   const closeForm = () => {
@@ -301,13 +329,13 @@ export default function Oferte() {
     try {
       if (editingSvc.id) {
         await db.execute(
-          "UPDATE service_catalog SET category=?, name=?, description=?, default_price=?, unit=?, is_recurring=?, sort_order=? WHERE id=?",
-          [editingSvc.category, editingSvc.name, editingSvc.description || "", editingSvc.default_price || 0, editingSvc.unit || "buc", editingSvc.is_recurring ? 1 : 0, editingSvc.sort_order || 0, editingSvc.id]
+          "UPDATE service_catalog SET category=?, name=?, description=?, features=?, default_price=?, unit=?, is_recurring=?, sort_order=? WHERE id=?",
+          [editingSvc.category, editingSvc.name, editingSvc.description || "", editingSvc.features || "[]", editingSvc.default_price || 0, editingSvc.unit || "buc", editingSvc.is_recurring ? 1 : 0, editingSvc.sort_order || 0, editingSvc.id]
         );
       } else {
         await db.execute(
-          "INSERT INTO service_catalog (category, name, description, default_price, unit, is_recurring, sort_order) VALUES (?,?,?,?,?,?,?)",
-          [editingSvc.category || "General", editingSvc.name, editingSvc.description || "", editingSvc.default_price || 0, editingSvc.unit || "buc", editingSvc.is_recurring ? 1 : 0, editingSvc.sort_order || 0]
+          "INSERT INTO service_catalog (category, name, description, features, default_price, unit, is_recurring, sort_order) VALUES (?,?,?,?,?,?,?,?)",
+          [editingSvc.category || "General", editingSvc.name, editingSvc.description || "", editingSvc.features || "[]", editingSvc.default_price || 0, editingSvc.unit || "buc", editingSvc.is_recurring ? 1 : 0, editingSvc.sort_order || 0]
         );
       }
       setEditingSvc(null);
@@ -331,9 +359,15 @@ export default function Oferte() {
     const svc = catalog.find(c => c.id === serviceId);
     if (!svc) return;
 
+    let features: string[] = [];
+    try {
+      features = JSON.parse(svc.features || "[]");
+    } catch(e) {}
+
     const newItem: QuoteItem = {
       service_id: svc.id,
       description: svc.description || svc.name,
+      features,
       quantity: 1,
       unit: svc.unit,
       unit_price: svc.default_price,
@@ -354,7 +388,7 @@ export default function Oferte() {
     }
   };
 
-  const updateItem = (list: "items" | "sub", i: number, field: keyof QuoteItem, val: string | number) => {
+  const updateItem = (list: "items" | "sub", i: number, field: keyof QuoteItem, val: any) => {
     const setter = list === "items" ? setItems : setSubscriptionItems;
     setter(prev => {
       const next = [...prev];
@@ -394,6 +428,19 @@ ${discountPercent > 0 ? `- Discount: ${discountPercent}% (−${calcDiscount(calc
 - TOTAL PROIECT: ${calcTotal()} RON
 ${subList ? `\nABONAMENT LUNAR:\n${subList}\n- Total lunar: ${calcSubPrice()} RON/lună\n- Perioadă minimă: ${subscriptionMonths} luni\n- Start: ${subscriptionStartDate}` : "- Fără plan de abonament"}
 ${notes ? `\nNOTE CURENTE:\n${notes}` : ""}
+
+Dacă utilizatorul îți cere să generezi oferta, poți răspunde cu un bloc JSON valid între tag-uri <config>...</config> care să conțină:
+{
+  "title": "...",
+  "project_type": "...",
+  "page_count": 5,
+  "delivery_days": 30,
+  "items": [{"description": "...", "quantity": 1, "unit": "buc", "unit_price": 1000, "features": ["...", "..."]}],
+  "has_subscription": true,
+  "subscription_items": [...],
+  "subscription_months": 12,
+  "notes": "..."
+}
 
 Răspunde concis și practic în română.`;
   };
@@ -850,15 +897,31 @@ Răspunde concis și practic în română.`;
                 <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Descriere (ce include serviciul)</div>
                 <textarea 
                   className="field" 
-                  rows={6} 
+                  rows={4} 
                   value={editingSvc.description || ""} 
                   onChange={e => setEditingSvc({ ...editingSvc, description: e.target.value })}
-                  placeholder="Ex: • Wireframe-uri pentru toate paginile&#10;• Design UI/UX profesional&#10;• 2 runde de revizuiri&#10;&#10;Livrabile: Fișiere Figma + ghid de stil"
-                  style={{ resize: "vertical", whiteSpace: "pre-wrap" }}
+                  placeholder="Ex: Transform structura în design vizual profesional."
+                  style={{ resize: "vertical" }}
                 />
-                <div style={{ fontSize: 10, color: "var(--tx-4)", marginTop: 4 }}>
-                  💡 Folosește • pentru liste și lasă o linie goală înainte de "Livrabile:"
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6, display: "flex", justifyContent: "space-between" }}>
+                  <span>Livrabile și funcționalități (unul pe rând)</span>
+                  <span style={{ color: "var(--ac)", fontWeight: 700 }}>STRUCTURAT</span>
                 </div>
+                <textarea 
+                  className="field" 
+                  rows={5} 
+                  value={(() => {
+                    try {
+                      const f = JSON.parse(editingSvc.features || "[]");
+                      return Array.isArray(f) ? f.join("\n") : "";
+                    } catch(e) { return ""; }
+                  })()} 
+                  onChange={e => setEditingSvc({ ...editingSvc, features: JSON.stringify(e.target.value.split("\n").filter(x => x.trim())) })}
+                  placeholder="• Wireframe-uri pagini&#10;• Design UI final Figma&#10;• Ghid de stil culori/fonturi"
+                  style={{ resize: "vertical", fontSize: 12 }}
+                />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
