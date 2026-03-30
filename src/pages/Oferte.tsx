@@ -89,6 +89,7 @@ export default function Oferte() {
 
   const [activeTab, setActiveTab] = useState<"oferte" | "catalog">("oferte");
   const [editingSvc, setEditingSvc] = useState<Partial<ServiceCatalogItem> | null>(null);
+  const [viewingSvc, setViewingSvc] = useState<ServiceCatalogItem | null>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -329,10 +330,10 @@ export default function Oferte() {
   const addServiceFromCatalog = (serviceId: number, isSub: boolean) => {
     const svc = catalog.find(c => c.id === serviceId);
     if (!svc) return;
-    
+
     const newItem: QuoteItem = {
       service_id: svc.id,
-      description: svc.name,
+      description: svc.description || svc.name,
       quantity: 1,
       unit: svc.unit,
       unit_price: svc.default_price,
@@ -546,17 +547,24 @@ Răspunde concis și practic în română.`;
           </div>
 
           <div style={{ padding: "0" }}>
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-base)", display: "grid", gridTemplateColumns: "1fr 100px 80px 40px", gap: 12, fontSize: 11, fontWeight: 700, color: "var(--tx-3)", textTransform: "uppercase" }}>
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-base)", display: "grid", gridTemplateColumns: "2fr 100px 80px 100px", gap: 12, fontSize: 11, fontWeight: 700, color: "var(--tx-3)", textTransform: "uppercase" }}>
               <span>Nume Serviciu / Categorie</span>
               <span style={{ textAlign: "right" }}>Preț (lei)</span>
               <span style={{ textAlign: "center" }}>Tip</span>
-              <span></span>
+              <span style={{ textAlign: "center" }}>Acțiuni</span>
             </div>
             {catalog.map(item => (
-              <div key={item.id} className="catalog-row" style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "1fr 100px 80px 40px", gap: 12, alignItems: "center" }}>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--tx-1)" }}>{item.name}</span>
+              <div key={item.id} className="catalog-row" style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "2fr 100px 80px 100px", gap: 12, alignItems: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--tx-1)" }}>{item.name}</span>
                   <span style={{ fontSize: 11, color: "var(--tx-4)" }}>{item.category}</span>
+                  <button 
+                    className="btn btn-ghost" 
+                    style={{ padding: "2px 6px", fontSize: 10, width: "fit-content", marginTop: 4 }}
+                    onClick={() => setViewingSvc(item)}
+                  >
+                    <Eye size={10} /> Vezi detalii
+                  </button>
                 </div>
                 <div style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600 }}>
                   {item.default_price.toLocaleString()} lei
@@ -566,7 +574,7 @@ Răspunde concis și practic în română.`;
                     {item.is_recurring ? "RECURENT" : "PROIECT"}
                   </span>
                 </div>
-                <div style={{ display: "flex", gap: 4 }}>
+                <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                   <button className="btn btn-ghost" style={{ padding: 4 }} onClick={() => setEditingSvc(item)} title="Editează">
                     <Bot size={12} />
                   </button>
@@ -581,6 +589,49 @@ Răspunde concis și practic în română.`;
                 Nu ai servicii în catalog. Folosește butonul de sus pentru a adăuga.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Vezi Detalii Serviciu */}
+      {viewingSvc && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setViewingSvc(null)}>
+          <div className="modal" style={{ width: 600, maxWidth: "95vw" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, color: "var(--tx-1)" }}>{viewingSvc.name}</h3>
+                <span style={{ fontSize: 11, color: "var(--tx-4)" }}>{viewingSvc.category}</span>
+              </div>
+              <button className="btn btn-ghost" onClick={() => setViewingSvc(null)} style={{ padding: 4 }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "24px" }}>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--tx-3)", textTransform: "uppercase", marginBottom: 8 }}>Descriere</div>
+                <div style={{ fontSize: 13, color: "var(--tx-1)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                  {viewingSvc.description}
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 20 }}>
+                <div style={{ padding: 12, background: "var(--bg-1)", borderRadius: "var(--r-md)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--tx-3)", textTransform: "uppercase" }}>Preț</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--tx-1)", fontFamily: "var(--font-mono)" }}>
+                    {viewingSvc.default_price.toLocaleString()} lei
+                  </div>
+                </div>
+                <div style={{ padding: 12, background: "var(--bg-1)", borderRadius: "var(--r-md)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--tx-3)", textTransform: "uppercase" }}>Unitate</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--tx-1)" }}>
+                    {viewingSvc.unit}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setViewingSvc(null)}>Închide</button>
+              <button className="btn btn-primary" onClick={() => { setViewingSvc(null); setEditingSvc(viewingSvc); }}>Editează</button>
+            </div>
           </div>
         </div>
       )}
@@ -794,6 +845,20 @@ Răspunde concis și practic în română.`;
               <div>
                 <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Nume Serviciu</div>
                 <input className="field" value={editingSvc.name || ""} onChange={e => setEditingSvc({ ...editingSvc, name: e.target.value })} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Descriere (ce include serviciul)</div>
+                <textarea 
+                  className="field" 
+                  rows={6} 
+                  value={editingSvc.description || ""} 
+                  onChange={e => setEditingSvc({ ...editingSvc, description: e.target.value })}
+                  placeholder="Ex: • Wireframe-uri pentru toate paginile&#10;• Design UI/UX profesional&#10;• 2 runde de revizuiri&#10;&#10;Livrabile: Fișiere Figma + ghid de stil"
+                  style={{ resize: "vertical", whiteSpace: "pre-wrap" }}
+                />
+                <div style={{ fontSize: 10, color: "var(--tx-4)", marginTop: 4 }}>
+                  💡 Folosește • pentru liste și lasă o linie goală înainte de "Livrabile:"
+                </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>

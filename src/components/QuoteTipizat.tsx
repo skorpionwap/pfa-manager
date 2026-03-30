@@ -76,7 +76,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
           {quote.items.map((it, i) => (
             <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
               <td style={{ padding: "16px", fontSize: 14 }}>
-                <div style={{ fontWeight: 600 }}>{it.description}</div>
+                <div style={{ fontWeight: 600, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{it.description}</div>
               </td>
               <td style={{ padding: "16px", textAlign: "right", fontWeight: 700 }}>
                 {it.total.toLocaleString()}
@@ -124,7 +124,9 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
             <tbody>
               {quote.subscription_items.map((it, i) => (
                 <tr key={i} style={{ borderBottom: "1px dashed #eee" }}>
-                  <td style={{ padding: "12px 16px", fontSize: 14 }}>{it.description}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 14 }}>
+                    <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{it.description}</div>
+                  </td>
                   <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>
                     {it.total.toLocaleString()} RON / lună
                   </td>
