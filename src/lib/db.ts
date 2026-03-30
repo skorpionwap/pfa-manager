@@ -157,34 +157,31 @@ async function initSchema(db: Database) {
   `);
 
   // ── Sincronizare Catalog Servicii Ofertare ──────────────────────────────────
-  // Curățăm duplicatele existente (dacă există) înainte de processare
-  await db.execute(`
-    DELETE FROM service_catalog
-    WHERE id NOT IN (
-      SELECT MIN(id)
-      FROM service_catalog
-      GROUP BY category, name
-    )
-  `);
+  // Curățăm duplicatele și artefactele trecute total ambigue din baza de date
+  try {
+    await db.execute(`DELETE FROM service_catalog WHERE name LIKE '%Site de prezentare%'`);
+    await db.execute(`DELETE FROM service_catalog WHERE name LIKE '%Pagina de%'`);
+    await db.execute(`DELETE FROM service_catalog WHERE name LIKE '%Landing Page%'`);
+  } catch(e) {}
 
   const MASTER_SERVICES = [
     { cat: 'Aspect & Identitate Vizuală', name: 'Wireframe-uri & structură pagini', desc: 'Structura clară a site-ului, ca un "schelet" logic al paginilor.', feats: ['Wireframe-uri pentru paginile principale', 'Amplasarea elementelor (header, conținut, footer)', 'Flux de navigare între pagini', '2 runde de revizuiri'], price: 300, unit: 'proiect', rec: 0, order: 1 },
     { cat: 'Aspect & Identitate Vizuală', name: 'Design UI/UX complet', desc: 'Transform structura în design vizual profesional direct implementabil.', feats: ['Design personalizat pe brandul tău', 'Paletă de culori și tipografie', 'Variante desktop + mobil (responsive)', 'Ghid de stil (culori, fonturi, componente)'], price: 1200, unit: 'proiect', rec: 0, order: 2 },
     { cat: 'Aspect & Identitate Vizuală', name: 'Kit identitate vizuală digitală', desc: 'Elementele grafice de bază pentru prezența ta online.', feats: ['3 propuneri de logo (variante inițiale)', 'Paleta de culori și fonturi recomandate', 'Variante logo (principal, secundar, favicon)', 'Ghid rapid de utilizare'], price: 800, unit: 'proiect', rec: 0, order: 3 },
     
-    { cat: 'Construirea Site-ului', name: 'Pagina de prezentare (Landing Page)', desc: 'O singură pagină optimizată pentru a promova un produs sau serviciu cu focus pe rată de conversie.', feats: ['Design modern tip Landing Page dintr-o singură pagină lungă', 'Până la 5 secțiuni (Ex: Hero, Despre, Servicii, Testimoniale, Contact)', 'Formular de contact integrat', 'Optimizare completă pentru CTA (Call To Action)'], price: 1000, unit: 'proiect', rec: 0, order: 10 },
-    { cat: 'Construirea Site-ului', name: 'Site de prezentare (1-5 pagini)', desc: 'Site perfect pentru afaceri la început de drum, cu pagini interne și informații esențiale.', feats: ['Homepage + 4 pagini interne (Ex: Despre, Portofoliu, Servicii, Contact)', 'Design responsive perfect adaptabil pe orice ecran', 'Formular de contact și integrare hartă Google Maps', 'Viteză de încărcare optimizată'], price: 2000, unit: 'proiect', rec: 0, order: 11 },
-    { cat: 'Construirea Site-ului', name: 'Site de prezentare Complex (6-15 pagini)', desc: 'O platformă robustă, cu multiple secțiuni, pentru o companie dezvoltată.', feats: ['Până la 15 pagini construite și populate', 'Design complex cu elemente grafice avansate', 'Sistem de blog / noutăți', 'Integrare link-uri social media și abonare la newsletter'], price: 3500, unit: 'proiect', rec: 0, order: 12 },
-    { cat: 'Construirea Site-ului', name: 'Magazin online (E-commerce)', desc: 'Platformă completă de vânzări online.', feats: ['Catalog produse cu categorii structurate și filtre avansate', 'Pagini detaliate pentru produse (imagini cu zoom, variații mărime/culoare)', 'Sistem complet de coș și checkout cu validare auto', 'Integrare procesator de plăți, facturare și metode de curierat'], price: 6000, unit: 'proiect', rec: 0, order: 13 },
-    { cat: 'Construirea Site-ului', name: 'Aplicație web personalizată', desc: 'Software web custom dezvoltat de la zero, conform cerințelor funcționale unice.', feats: ['Arhitectură de baze de date custom, scalabilă', 'Sistem avansat de utilizatori cu roluri și permisiuni ierarhice', 'Dashboard cu rapoarte, statistici și grafice detaliate', 'Fluxuri logice de procesare a datelor personalizate'], price: 10000, unit: 'proiect', rec: 0, order: 14 },
+    { cat: 'Construirea Site-ului', name: 'Landing Page (Pagină Unică Promovare)', desc: 'O singură pagină optimizată exclusiv pentru a capta lead-uri sau a promova un produs/serviciu.', feats: ['Design modern One-Page', 'Structură secvențială (Secțiuni tip Hero, Despre, Servicii, Testimoniale)', 'Formular de contact/captare simplificat', 'Elemente orientate pur pe Rată de Conversie (CTA-uri repetate)'], price: 1000, unit: 'proiect', rec: 0, order: 10 },
+    { cat: 'Construirea Site-ului', name: 'Site de Prezentare Standard (Până la 5 pagini)', desc: 'Site perfect structurat pentru afaceri și PFA-uri, cu pagini ierarhice (informații, servicii, detalii de contact).', feats: ['Homepage + până la 4 pagini interne (ex: Despre Noi, Portofoliu, Contact)', 'Design responsive 100%', 'Formular complex și integrare Google Maps', 'Arhitectură de Informații clară și navigație logică', 'Viteză optimizată de încărcare'], price: 2000, unit: 'proiect', rec: 0, order: 11 },
+    { cat: 'Construirea Site-ului', name: 'Site de Prezentare Extins (Până la 15 pagini)', desc: 'Platformă completă de prezentare pentru o companie care oferă multiple categorii de servicii.', feats: ['Toate funcționalitățile pachetului Standard', 'Până la 15 pagini personalizate (inclusiv galerii foto multiple)', 'Sistem/Pagina de Noutăți (Blog integrat minimalist)', 'Formulare multiple sau secțiuni cu funcții custom'], price: 3500, unit: 'proiect', rec: 0, order: 12 },
+    { cat: 'Construirea Site-ului', name: 'Magazin online (E-commerce)', desc: 'Platformă completă de vânzări online gata de lansat.', feats: ['Catalog produse cu categorii și filtre de căutare avansate', 'Sistem Coș și Proces de preluare comenzi centralizat', 'Checkout standard și validare auto', 'Integrare curierat / metode plată'], price: 6000, unit: 'proiect', rec: 0, order: 13 },
+    { cat: 'Construirea Site-ului', name: 'Aplicație web personalizată', desc: 'Software web custom dezvoltat integral de la zero conform brief-ului funcțional unic.', feats: ['Bază de date scalabilă dedicată', 'Sistem login avansat și panou administrativ vizual', 'Pachete logice și fluxuri customizate strict pentru clienți sau angajații afacerii'], price: 10000, unit: 'proiect', rec: 0, order: 14 },
 
-    { cat: 'Funcționalități & Integrări', name: 'SEO Inițial (Pentru site-uri noi)', desc: 'Toate implementările tehnice necesare de la bun început la lansarea unui site pentru a asigura indexarea corectă.', feats: ['Optimizare On-Page (Titluri, Descrieri) pt toate paginile', 'Generare și submitere Sitemap XML pentru crawlere', 'Configurare Google Search Console & Google Analytics 4', 'Structură semantică HTML (taguri H1-H6) definită corect', 'Optimizarea vitezei de bază (Minificare cod, Lazy Loading imagini, Caching eficent)'], price: 600, unit: 'proiect', rec: 0, order: 20 },
-    { cat: 'Funcționalități & Integrări', name: 'Sistem comenzi & plăți online', desc: 'Configurare terminal de plăți (POS virtual) securizat pe site-ul tău.', feats: ['Integrare procesator românesc (ex: Stripe / PayU / Netopia)', 'Testare sistem plăți complet în Mediu Sandbox de dezvoltare', 'Configurare facturare fiscală automată la reușita plății', 'Interfață backend cu status istoric plăți (plătit, refuzat, etc)'], price: 1200, unit: 'proiect', rec: 0, order: 21 },
-    { cat: 'Funcționalități & Integrări', name: 'Panou de administrare conținut (CMS)', desc: 'Schimbi rapid si usor textele si imaginile de pe site fara ajutorul unui programator.', feats: ['Instalare și parametrizare sistem modern de management (CMS)', 'Dezvoltare blocuri de conținut editabile (Text, Imagine, Galerie) personalizate', 'Gestiune facilă centralizată de fișiere media (fotografii, PDF-uri)', 'Sesiune video de asistență / training pentru învățarea utilizării sistemului'], price: 1500, unit: 'proiect', rec: 0, order: 22 },
+    { cat: 'Funcționalități & Integrări', name: 'SEO Inițial (Pentru site-uri noi)', desc: 'Toate setările tehnice Google necesare la momentul lansării site-ului.', feats: ['Configurare Meta Title/Description', 'Generare Sitemap XML dinamic', 'Setare și verificare cont Google Search Console & Analytics 4'], price: 600, unit: 'proiect', rec: 0, order: 20 },
+    { cat: 'Funcționalități & Integrări', name: 'Sistem plăți cu cardul securizat', desc: 'Gestiune tranzacții și încasări automate card.', feats: ['Integrare modul (Domeniu local: ex Stripe / Netopia)', 'Teste detaliate integrării în mediu Sandbox', 'Panou de status tranzacții plătit/refuzat'], price: 1200, unit: 'proiect', rec: 0, order: 21 },
+    { cat: 'Funcționalități & Integrări', name: 'Implementare Panou Control CMS', desc: 'Pentru ca tu/clientul să puteți edita singuri textele și fotografiile.', feats: ['Configurare soluție CMS OpenSource sau Headless', 'Editabil pentru blocuri statice text și imagini', 'Taining video înregistrat inclus pentru proprietar'], price: 1500, unit: 'proiect', rec: 0, order: 22 },
 
-    { cat: 'Mentenanță Lunară & Suport', name: 'Găzduire & mentenanță tehnică', desc: 'Asigurăm disponibilitatea 99.9% și securitatea tehnică a site-ului tău lună de lună.', feats: ['Găzduire web pe un server rapid și localizat în Europa (SSD NVMe)', 'Certificat SSL automat reînnoit pentru canal securizat', 'Sistem de Backup automat lunar sau săptămânal testat', 'Alerte Uptime și monitorizare ping la 5 minute', 'Update-uri majore de securitate și pachete software'], price: 200, unit: 'lună', rec: 1, order: 50 },
-    { cat: 'Mentenanță Lunară & Suport', name: 'Actualizări conținut & suport extins', desc: 'Suntem dispuși să lucrăm constant cu tine. Ajustări lunare și asistență promptă.', feats: ['Aprox. 5 ore de lucru incluse pe lună rezervate pentru modificări', 'Ajustări elemente de design / introducere conținut și articole', 'Asistență tehnică prioritară (Răspuns rapid 4-8 ore) pe canal de email/telefon'], price: 500, unit: 'lună', rec: 1, order: 51 },
-    { cat: 'Mentenanță Lunară & Suport', name: 'Optimizare SEO lunară continuă', desc: 'Investiție lunară care crește vizibilitatea, autoritatea și atrage organic trafic relevant.', feats: ['Monitorizare evoluție clasament cuvinte cheie prin tool dedicat', 'Concept și adaptare pentru 1-2 articole/pagini cu focus pe ranking', 'Generare linkbuilding organic (atragere backlink-uri în publicații)', 'Optimizări tehnice recurente, A/B Testing pe titluri pagini', 'Emitere raport detaliat vizual de performanță (PDF) lunar'], price: 1000, unit: 'lună', rec: 1, order: 52 },
+    { cat: 'Mentenanță Lunară & Suport', name: 'Găzduire & mentenanță tehnică', desc: 'Abonament fundamental: Asigurăm stabilitatea site-ului tău lunar.', feats: ['Server rapid localizat în EU (SSD NVMe)', 'Prelungire SSL și setup tehnic asigurat neîntrerupt', 'Mecanism Backup lunar auto'], price: 200, unit: 'lună', rec: 1, order: 50 },
+    { cat: 'Mentenanță Lunară & Suport', name: 'Actualizări conținut tip asistență', desc: 'Abonament operativ: Te ajutăm constant cu adăugări și actualizări mici.', feats: ['Aprox. 5 ore/lună dedicate rezervate special modificărilor tale', 'Adăugări de noi texte pre-scrise sau produse/conținut foto', 'Timp Răspuns suport prioritar (max 4-8 ore active)'], price: 500, unit: 'lună', rec: 1, order: 51 },
+    { cat: 'Mentenanță Lunară & Suport', name: 'Optimizare SEO organică (Abonament)', desc: 'Serviciul pentru creșterea prezenței în Top 10 Google pas cu pas.', feats: ['Investigare tehnică lunară de cuvinte cheie / poziții', 'Sugestii și asistență redacțională pt Articole sau link-uri calitative externe', 'Raportare lunară grafică SEO a progresului'], price: 1000, unit: 'lună', rec: 1, order: 52 },
   ];
 
   for (const svc of MASTER_SERVICES) {
@@ -205,8 +202,7 @@ async function initSchema(db: Database) {
     }
   }
 
-  // Renamed retro-compatibility fixes for user data consistency
-  await db.execute(`UPDATE service_catalog SET name = 'Site de prezentare Complex (6-15 pagini)' WHERE name = 'Site de prezentare (1-15 pagini)'`);
+  await db.execute(`DELETE FROM service_catalog WHERE name LIKE '%Site de prezentare (1-15 pagini)%' OR name LIKE '%1-5 pagini%'`);
 }
 
 export async function getSetting(key: string): Promise<string> {
