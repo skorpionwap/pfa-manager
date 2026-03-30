@@ -41,7 +41,11 @@ export default function OfertaGeminiPanel({ open, onClose, quoteContext, initial
       if (initialHistory && initialHistory.length > 0) {
         setMessages(initialHistory);
       } else if (messages.length === 0) {
-        runPrompt("Fă o analiză scurtă a ofertei curente și spune-mi 2-3 puncte forte și ce s-ar putea îmbunătăți.");
+        if (quoteContext.includes("TOTAL PROIECT: 0 RON") || quoteContext.includes("(niciun serviciu adăugat încă)")) {
+          setMessages([{ role: "ai", text: "Salut! 👋 Sunt asistentul tău inteligent din Libero.\n\nPovestește-mi despre nevoile clientului tău (ex: *„Vrea un site de prezentare pentru o clinică stomatologică și abonament de mentenanță”*) și voi structura automat o ofertă completă pe baza catalogului de servicii!"}]);
+        } else {
+          runPrompt("Fă o analiză scurtă a ofertei curente și spune-mi 2-3 puncte forte și ce s-ar putea îmbunătăți.");
+        }
       }
     } else {
       setMessages([]); // Reset on close so next time it loads fresh

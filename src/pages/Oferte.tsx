@@ -51,6 +51,75 @@ const addMonths = (d: string, n: number) => {
 
 const emptyItem = (): QuoteItem => ({ description: "", quantity: 1, unit: "buc", unit_price: 0, total: 0 });
 
+const CatalogSelect = ({ items, onSelect, placeholder }: { items: ServiceCatalogItem[], onSelect: (id: number) => void, placeholder: string }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    else document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const filtered = items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()) || i.category.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div ref={containerRef} style={{ position: "relative", width: 220 }}>
+      <button 
+        type="button"
+        className="field" 
+        style={{ width: "100%", textAlign: "left", fontSize: 12, padding: "6px 10px", color: "var(--tx-2)", cursor: "pointer", background: "var(--bg-1)" }} 
+        onClick={(e) => { e.preventDefault(); setOpen(!open); setQuery(""); }}
+      >
+        {placeholder}
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, marginTop: 4, 
+          width: 320, background: "var(--bg-base)", border: "1px solid var(--border)", 
+          boxShadow: "0 8px 16px rgba(0,0,0,0.15)", borderRadius: "var(--r-md)", 
+          zIndex: 9999, display: "flex", flexDirection: "column", maxHeight: 350
+        }}>
+          <input 
+            autoFocus 
+            className="field" 
+            style={{ margin: 8, border: "1px solid var(--ac)", width: "calc(100% - 16px)" }}
+            placeholder="Caută în catalog..." 
+            value={query} onChange={e => setQuery(e.target.value)} 
+          />
+          <div style={{ overflowY: "auto", flex: 1, padding: "0 4px 4px 4px" }}>
+            {filtered.map(i => (
+              <div 
+                key={i.id} 
+                style={{
+                  padding: "8px 12px", fontSize: 12, color: "var(--tx-1)", cursor: "pointer",
+                  borderRadius: 4, marginBottom: 2
+                }}
+                onClick={() => { onSelect(i.id); setOpen(false); }}
+                onMouseEnter={e => e.currentTarget.style.background = "var(--bg-2)"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <div style={{ fontWeight: 600, color: "var(--tx-1)" }}>{i.name}</div>
+                <div style={{ fontSize: 10, color: "var(--tx-3)", display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                  <span>{i.category}</span>
+                  <span style={{ color: "var(--tx-2)", fontWeight: 700 }}>{i.default_price.toLocaleString()} lei</span>
+                </div>
+              </div>
+            ))}
+            {filtered.length === 0 && <div style={{ padding: 10, fontSize: 11, color: "var(--tx-3)", textAlign: "center" }}>Nu am găsit niciun serviciu.</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Oferte() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -86,6 +155,7 @@ export default function Oferte() {
   const [notes, setNotes] = useState("");
   
   const [geminiPanelOpen, setGeminiPanelOpen] = useState(false);
+  const [aiHistory, setAiHistory] = useState<any[]>([]);
 
   const [activeTab, setActiveTab] = useState<"oferte" | "catalog">("oferte");
   const [editingSvc, setEditingSvc] = useState<Partial<ServiceCatalogItem> | null>(null);
@@ -132,11 +202,17 @@ export default function Oferte() {
       const { open } = (e as CustomEvent).detail;
       if (!open) setGeminiPanelOpen(false);
     };
+    // History sync from panel
+    const historyChangeHandler = (e: Event) => {
+      setAiHistory((e as CustomEvent).detail.messages);
+    };
     window.addEventListener("oferta-gemini-note", handler);
     window.addEventListener("oferta-gemini", closeHandler);
+    window.addEventListener("oferta-gemini-history-change", historyChangeHandler);
     return () => {
       window.removeEventListener("oferta-gemini-note", handler);
       window.removeEventListener("oferta-gemini", closeHandler);
+      window.removeEventListener("oferta-gemini-history-change", historyChangeHandler);
     };
   }, [clients]); // Add dependencies if needed for toast or state setters
 
@@ -147,6 +223,13 @@ export default function Oferte() {
       setGeminiPanelOpen(false);
       window.dispatchEvent(new CustomEvent("oferta-gemini", { detail: { open: false } }));
     }
+  };
+
+  const dispatchGeminiRender = (nextOpen: boolean) => {
+    setGeminiPanelOpen(nextOpen);
+    window.dispatchEvent(new CustomEvent("oferta-gemini", {
+      detail: { open: nextOpen, context: buildQuoteContext(), history: aiHistory },
+    }));
   };
 
   useEffect(() => {
@@ -202,6 +285,7 @@ export default function Oferte() {
     setValidUntil(addDays(today(), 30));
     setStatus("draft");
     setNotes("");
+    setAiHistory([]);
     
     setShowForm(true);
   };
@@ -224,6 +308,11 @@ export default function Oferte() {
     setValidUntil(q.valid_until || addDays(today(), 30));
     setStatus(q.status);
     setNotes(q.notes || "");
+    try {
+      setAiHistory(JSON.parse(q.chat_history || "[]"));
+    } catch {
+      setAiHistory([]);
+    }
     
     setShowForm(true);
   };
@@ -252,13 +341,13 @@ export default function Oferte() {
           client_id=?, title=?, project_type=?, page_count=?, items=?, 
           subscription_items=?, subscription_price=?, subscription_months=?, subscription_start_date=?, has_subscription=?,
           subtotal=?, discount_percent=?, discount_amount=?, total=?, 
-          delivery_days=?, valid_until=?, status=?, notes=?
+          delivery_days=?, valid_until=?, status=?, notes=?, chat_history=?
         WHERE id=?`,
         [
           clientId, title, projectType, pageCount, JSON.stringify(items),
           JSON.stringify(subscriptionItems), subP, subscriptionMonths, subscriptionStartDate, hasSubscription ? 1 : 0,
           st, discountPercent, discAmt, tot,
-          deliveryDays, validUntil, status, notes,
+          deliveryDays, validUntil, status, notes, JSON.stringify(aiHistory),
           editing.id
         ]
       );
@@ -269,13 +358,13 @@ export default function Oferte() {
           number, client_id, title, project_type, page_count, items,
           subscription_items, subscription_price, subscription_months, subscription_start_date, has_subscription,
           subtotal, discount_percent, discount_amount, total,
-          delivery_days, valid_until, status, notes
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          delivery_days, valid_until, status, notes, chat_history
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           number, clientId, title, projectType, pageCount, JSON.stringify(items),
           JSON.stringify(subscriptionItems), subP, subscriptionMonths, subscriptionStartDate, hasSubscription ? 1 : 0,
           st, discountPercent, discAmt, tot,
-          deliveryDays, validUntil, status, notes
+          deliveryDays, validUntil, status, notes, JSON.stringify(aiHistory)
         ]
       );
       await bumpQuoteCounter();
@@ -410,10 +499,34 @@ export default function Oferte() {
       ? subscriptionItems.filter(it => it.description).map(it => `  - ${it.description}: ${it.unit_price} RON/lună`).join("\n")
       : null;
 
-    return `Ești un consultant de vânzări și strateg digital specializat pe piața din România.
-Ajuți un freelancer să optimizeze o ofertă comercială.
+    const catalogString = catalog.map(c => `- ID: ${c.id} | Nume: ${c.name} (${c.is_recurring ? "Recurent" : "One-time"}) | Preț standard: ${c.default_price} lei\n  Descriere scurtă: ${c.description || "N/A"}\n  Features: ${c.features || "[]"}`).join("\n\n");
 
-OFERTĂ CURENTĂ:
+    return `Ești un consultant de vânzări și un asistent AI pentru un freelancer sau o agenție web din România. 
+Misiunea ta este SĂ CONSTRUIEȘTI o ofertă structurată pe baza discuției cu utilizatorul sau să evaluezi oferta curentă.
+
+CATALOG DE SERVICII DISPONIBILE DIN CARE TREBUIE SĂ ALEGI:
+${catalogString}
+
+Dacă utilizatorul își dorește ca TU să creezi sau să modifici oferta generând o propunere completă nouă de servicii de la 0,
+te rog să o faci răspunzând profesional, justificând opțiunile alese, dar LA FINALUL MESAJULUI trebuie să incluzi un bloc <config> valid JSON.
+Acest JSON va fi folosit de interfața aplicației noastre pentru a autocompleta câmpurile.
+NU inventa ID-uri, ia ID-ul și prețurile din "CATALOG DE SERVICII DISPONIBILE". Poți adapta prețul ca un "reducere/discount" sau să îl mărești justificat dacă e prea mic.
+Structură așteptată pentru blocul JSON:
+<config>
+{
+  "title": "Titlu propus proiect curat",
+  "project_type": "Site de prezentare / Magazin online / etc.",
+  "page_count": 5,
+  "delivery_days": 15,
+  "items": [{ "service_id": IDEXACTDINCATALOG, "description": "Numele exact", "quantity": 1, "unit": "buc", "unit_price": 500, "features": ["feature 1 extras din catalog db prop"] }],
+  "has_subscription": true sau false,
+  "subscription_items": [{ array similar ca "items" de sus, dar alege doar elemente "Recurent" din catalog }],
+  "subscription_months": 12,
+  "notes": "Note / Termeni garanție profesioniști."
+}
+</config>
+
+OFERTĂ CURENTĂ (așa cum o are setată utilizatorul momentan în interfață):
 - Client: ${client?.name || "nespecificat"}
 - Titlu proiect: ${title || "nespecificat"}
 - Tip proiect: ${projectType}
@@ -421,28 +534,13 @@ OFERTĂ CURENTĂ:
 - Termen livrare: ${deliveryDays} zile
 - Valabilitate ofertă: ${validUntil}
 
-SERVICII ONE-TIME:
+SERVICII ONE-TIME DEJA ADAUGATE VIZUAL DE CĂTRE UTILIZATOR:
 ${serviceList}
 - Subtotal: ${calcSubtotal()} RON
 ${discountPercent > 0 ? `- Discount: ${discountPercent}% (−${calcDiscount(calcSubtotal())} RON)` : ""}
 - TOTAL PROIECT: ${calcTotal()} RON
-${subList ? `\nABONAMENT LUNAR:\n${subList}\n- Total lunar: ${calcSubPrice()} RON/lună\n- Perioadă minimă: ${subscriptionMonths} luni\n- Start: ${subscriptionStartDate}` : "- Fără plan de abonament"}
-${notes ? `\nNOTE CURENTE:\n${notes}` : ""}
-
-Dacă utilizatorul îți cere să generezi oferta, poți răspunde cu un bloc JSON valid între tag-uri <config>...</config> care să conțină:
-{
-  "title": "...",
-  "project_type": "...",
-  "page_count": 5,
-  "delivery_days": 30,
-  "items": [{"description": "...", "quantity": 1, "unit": "buc", "unit_price": 1000, "features": ["...", "..."]}],
-  "has_subscription": true,
-  "subscription_items": [...],
-  "subscription_months": 12,
-  "notes": "..."
-}
-
-Răspunde concis și practic în română.`;
+${subList ? `\nABONAMENT LUNAR CURENT SETAT (MENTENANȚĂ):\n${subList}\n- Total lunar: ${calcSubPrice()} RON/lună\n- Perioadă minimă: ${subscriptionMonths} luni\n- Start: ${subscriptionStartDate}` : "- Fără plan de abonament"}
+${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
   };
 
   const convertToFinancialDoc = async (q: Quote) => {
@@ -494,6 +592,17 @@ Răspunde concis și practic în română.`;
           </p>
         </div>
         <div style={{ display: "flex", gap: 12 }}>
+          <button className="btn" style={{ background: "var(--ac-dim)", color: "var(--ac)", padding: "8px 14px", borderRadius: "100px", fontWeight: 600, display: "flex", alignItems: "center", gap: 6, border: "1px solid var(--ac)" }} onClick={() => {
+            openNew();
+            setTimeout(() => {
+              setGeminiPanelOpen(true);
+              window.dispatchEvent(new CustomEvent("oferta-gemini", {
+                detail: { open: true, context: buildQuoteContext(), history: [] },
+              }));
+            }, 100);
+          }}>
+            <Bot size={14} /> Wizard Ofertare AI
+          </button>
           <button className="btn btn-primary" onClick={openNew}>
             <Plus size={14} strokeWidth={2.5} /> Ofertă nouă
           </button>
@@ -683,7 +792,7 @@ Răspunde concis și practic în română.`;
         </div>
       )}
 
-      {/* Modal Formular Ofertă */}
+{/* Modal Formular Ofertă */}
       {showForm && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeForm()}>
           <div className="modal" style={{ width: 850, maxWidth: "95vw" }}>
@@ -691,24 +800,22 @@ Răspunde concis și practic în română.`;
               <h3 style={{ margin: 0, fontSize: 16 }}>{editing ? `Editează oferta ${editing.number}` : "Creează Ofertă Nouă"}</h3>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  onClick={() => {
-                    const next = !geminiPanelOpen;
-                    setGeminiPanelOpen(next);
-                    window.dispatchEvent(new CustomEvent("oferta-gemini", {
-                      detail: { open: next, context: buildQuoteContext() },
-                    }));
-                  }}
+                  onClick={() => dispatchGeminiRender(!geminiPanelOpen)}
                   style={{
-                    display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
-                    borderRadius: "var(--r-md)",
-                    border: geminiPanelOpen ? "1px solid var(--ac)" : "1px solid var(--border)",
-                    background: geminiPanelOpen ? "var(--ac-dim)" : "var(--bg-2)",
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: geminiPanelOpen ? "var(--ac-dim)" : "var(--bg-3)",
                     color: geminiPanelOpen ? "var(--ac)" : "var(--tx-2)",
-                    fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
+                    border: "1px solid var(--border)",
+                    padding: "4px 10px", borderRadius: "var(--r)",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    transition: "0.2s"
                   }}
                 >
                   <Zap size={14} fill="currentColor" />
                   Asistent AI
+                </button>
+                <button className="btn btn-primary" onClick={save}>
+                  Salvează
                 </button>
                 <button onClick={closeForm} className="btn btn-ghost" style={{ padding: 6 }}><X size={16} /></button>
               </div>
@@ -750,17 +857,11 @@ Răspunde concis și practic în română.`;
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <h4 style={{ margin: 0, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--tx-3)" }}>1. Servicii Construcție Site / Aplicație</h4>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <select className="field" style={{ width: 220, fontSize: 12, padding: "4px 8px" }} onChange={e => {
-                      if (e.target.value) {
-                        addServiceFromCatalog(Number(e.target.value), false);
-                        e.target.value = "";
-                      }
-                    }}>
-                      <option value="">+ Din Catalog...</option>
-                      {catalog.filter(c => !c.is_recurring).map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.default_price} lei)</option>
-                      ))}
-                    </select>
+                    <CatalogSelect 
+                      items={catalog.filter(c => !c.is_recurring)} 
+                      placeholder="+ Din Catalog Servicii..."
+                      onSelect={(val) => addServiceFromCatalog(val, false)} 
+                    />
                     <button className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setItems(p => [...p, emptyItem()])}>
                       Linie custom
                     </button>
@@ -796,17 +897,11 @@ Răspunde concis și practic în română.`;
                     <span style={{ fontWeight: 600, fontSize: 14 }}>Include plan de mentenanță / abonament lunar</span>
                   </label>
                   {hasSubscription && (
-                    <select className="field" style={{ width: 220, fontSize: 12, padding: "4px 8px" }} onChange={e => {
-                      if (e.target.value) {
-                        addServiceFromCatalog(Number(e.target.value), true);
-                        e.target.value = "";
-                      }
-                    }}>
-                      <option value="">+ Din Catalog Mentenanță...</option>
-                      {catalog.filter(c => c.is_recurring).map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.default_price} lei)</option>
-                      ))}
-                    </select>
+                    <CatalogSelect 
+                      items={catalog.filter(c => c.is_recurring)}
+                      placeholder="+ Din Catalog Mentenanță..."
+                      onSelect={(val) => addServiceFromCatalog(val, true)}
+                    />
                   )}
                 </div>
 
