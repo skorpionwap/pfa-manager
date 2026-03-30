@@ -17,7 +17,7 @@ export default function GeminiSidebar({ open, onClose }: GeminiSidebarProps) {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [editingTitle, setEditingTitle] = useState<number | null>(null);
   const [newTitle, setNewTitle] = useState("");
-  const [sessionsVisible, setSessionsVisible] = useState(true);
+  const [sessionsVisible, setSessionsVisible] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -182,7 +182,7 @@ Răspunde concis, prietenos și util în limba română.`;
   if (!open) return null;
 
   return (
-    <div style={{ width: 600, display: "flex", background: "var(--bg-1)", borderLeft: "1px solid var(--border)", height: "100vh" }}>
+    <div style={{ width: 450, display: "flex", background: "var(--bg-1)", borderLeft: "1px solid var(--border)", height: "100vh" }}>
       {/* Zona de chat */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Header */}
@@ -311,7 +311,7 @@ Răspunde concis, prietenos și util în limba română.`;
 
       {/* Sidebar cu sesiuni - în dreapta, collapsible */}
       {sessionsVisible && (
-        <div style={{ width: 220, borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", background: "var(--bg-2)" }}>
+        <div style={{ width: 180, borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", background: "var(--bg-2)" }}>
           {/* Header sesiuni */}
           <div style={{ padding: "14px", borderBottom: "1px solid var(--border)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
