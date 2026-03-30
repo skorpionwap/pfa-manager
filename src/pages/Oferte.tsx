@@ -90,6 +90,34 @@ export default function Oferte() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Listen for notes applied from the Gemini panel (rendered in Layout)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { text } = (e as CustomEvent).detail;
+      setNotes(prev => prev ? prev + "\n\n" + text : text);
+    };
+    // Close panel if form is closed externally
+    const closeHandler = (e: Event) => {
+      const { open } = (e as CustomEvent).detail;
+      if (!open) setGeminiPanelOpen(false);
+    };
+    window.addEventListener("oferta-gemini-note", handler);
+    window.addEventListener("oferta-gemini", closeHandler);
+    return () => {
+      window.removeEventListener("oferta-gemini-note", handler);
+      window.removeEventListener("oferta-gemini", closeHandler);
+    };
+  }, []);
+
+  // Close panel when form is closed
+  const closeForm = () => {
+    setShowForm(false);
+    if (geminiPanelOpen) {
+      setGeminiPanelOpen(false);
+      window.dispatchEvent(new CustomEvent("oferta-gemini", { detail: { open: false } }));
+    }
+  };
+
   useEffect(() => {
     if (!showPrint) return;
     window.print();
@@ -452,13 +480,19 @@ Răspunde concis și practic în română.`;
 
       {/* Modal Formular Ofertă */}
       {showForm && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeForm()}>
           <div className="modal" style={{ width: 850, maxWidth: "95vw" }}>
             <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ margin: 0, fontSize: 16 }}>{editing ? `Editează oferta ${editing.number}` : "Creează Ofertă Nouă"}</h3>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  onClick={() => setGeminiPanelOpen(v => !v)}
+                  onClick={() => {
+                    const next = !geminiPanelOpen;
+                    setGeminiPanelOpen(next);
+                    window.dispatchEvent(new CustomEvent("oferta-gemini", {
+                      detail: { open: next, context: buildQuoteContext() },
+                    }));
+                  }}
                   style={{
                     display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
                     borderRadius: "var(--r-md)",
@@ -471,7 +505,7 @@ Răspunde concis și practic în română.`;
                   <Zap size={14} fill="currentColor" />
                   Asistent AI
                 </button>
-                <button onClick={() => setShowForm(false)} className="btn btn-ghost" style={{ padding: 6 }}><X size={16} /></button>
+                <button onClick={closeForm} className="btn btn-ghost" style={{ padding: 6 }}><X size={16} /></button>
               </div>
             </div>
 
@@ -600,7 +634,7 @@ Răspunde concis și practic în română.`;
             </div>
 
             <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Anulează</button>
+              <button className="btn btn-ghost" onClick={closeForm}>Anulează</button>
               <button className="btn btn-primary" onClick={save}>
                 {editing ? "Salvează Modificări" : "Creează Ofertă"}
               </button>
@@ -641,12 +675,6 @@ Răspunde concis și practic în română.`;
         />
       )}
 
-      <OfertaGeminiPanel
-        open={geminiPanelOpen && showForm}
-        onClose={() => setGeminiPanelOpen(false)}
-        quoteContext={buildQuoteContext()}
-        onApplyToNotes={text => setNotes(prev => prev ? prev + "\n\n" + text : text)}
-      />
     </div>
   );
 }

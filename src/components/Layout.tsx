@@ -8,6 +8,7 @@ import {
 import { getSetting, isTauri } from "@/lib/db";
 import type { OperatingMode } from "@/types";
 import GeminiSidebar from "./GeminiSidebar";
+import OfertaGeminiPanel from "./OfertaGeminiPanel";
 
 const nav = [
   { to: "/",           icon: LayoutDashboard, label: "Dashboard" },
@@ -30,6 +31,8 @@ const MODE_LABEL: Record<OperatingMode, string> = {
 export default function Layout() {
   const [mode, setMode] = useState<OperatingMode>("dda");
   const [geminiOpen, setGeminiOpen] = useState(false);
+  const [ofertaGeminiOpen, setOfertaGeminiOpen] = useState(false);
+  const [ofertaGeminiContext, setOfertaGeminiContext] = useState("");
 
   const refreshMode = () => {
     if (!isTauri()) return;
@@ -53,11 +56,19 @@ export default function Layout() {
       }
     };
 
+    const ofertaHandler = (e: Event) => {
+      const { open, context } = (e as CustomEvent).detail;
+      if (typeof open === "boolean") setOfertaGeminiOpen(open);
+      if (typeof context === "string") setOfertaGeminiContext(context);
+    };
+
     window.addEventListener("settings-changed", handler);
     window.addEventListener("keydown", keyHandler);
+    window.addEventListener("oferta-gemini", ofertaHandler);
     return () => {
       window.removeEventListener("settings-changed", handler);
       window.removeEventListener("keydown", keyHandler);
+      window.removeEventListener("oferta-gemini", ofertaHandler);
     };
   }, []);
 
@@ -163,9 +174,21 @@ export default function Layout() {
         </div>
       </main>
 
-      <GeminiSidebar 
-        open={geminiOpen} 
-        onClose={() => setGeminiOpen(false)} 
+      <GeminiSidebar
+        open={geminiOpen}
+        onClose={() => setGeminiOpen(false)}
+      />
+
+      <OfertaGeminiPanel
+        open={ofertaGeminiOpen}
+        onClose={() => {
+          setOfertaGeminiOpen(false);
+          window.dispatchEvent(new CustomEvent("oferta-gemini", { detail: { open: false } }));
+        }}
+        quoteContext={ofertaGeminiContext}
+        onApplyToNotes={text =>
+          window.dispatchEvent(new CustomEvent("oferta-gemini-note", { detail: { text } }))
+        }
       />
     </div>
   );

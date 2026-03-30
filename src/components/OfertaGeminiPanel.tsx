@@ -66,11 +66,10 @@ export default function OfertaGeminiPanel({ open, onClose, quoteContext, onApply
 
   return (
     <div style={{
-      position: "fixed", top: 0, right: 0, bottom: 0,
-      width: 400, zIndex: 1200,
+      width: 400, flexShrink: 0,
       display: "flex", flexDirection: "column",
       background: "var(--bg-1)", borderLeft: "1px solid var(--border)",
-      boxShadow: "-8px 0 32px rgba(0,0,0,0.3)",
+      height: "100vh",
     }}>
       {/* Header */}
       <div style={{
