@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw, Palette, Bot, Eye, EyeOff, FileText, Loader2, RefreshCw } from "lucide-react";
+import { Check, User, Building2, CreditCard, Layers, Calculator, RotateCcw, Palette, Bot, Eye, EyeOff, FileText, Loader2, RefreshCw, ListPlus, Trash2, Plus } from "lucide-react";
 import { getDb, setSetting, isTauri } from "@/lib/db";
 import { analyzeLegislation, listGeminiModels, type LegislationAnalysis, type GeminiModelInfo } from "@/lib/gemini";
 import { FISCAL, FISCAL_DEFAULTS } from "@/lib/fiscal";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/Toast";
-import type { OperatingMode, PfaMode } from "@/types";
+import type { OperatingMode, PfaMode, ServiceCatalogItem } from "@/types";
 
 const DATA_SECTIONS = [
   {
@@ -68,6 +68,8 @@ export default function Setari() {
   const [legisText, setLegisText]       = useState("");
   const [legisLoading, setLegisLoading] = useState(false);
   const [legisResult, setLegisResult]   = useState<LegislationAnalysis | null>(null);
+  const [catalog, setCatalog]         = useState<ServiceCatalogItem[]>([]);
+  const [editingSvc, setEditingSvc]   = useState<Partial<ServiceCatalogItem> | null>(null);
   const { theme, setTheme, themes } = useTheme();
   const { toast }                 = useToast();
 
@@ -94,6 +96,10 @@ export default function Setari() {
             setGeminiModels(list);
           }).catch(() => {}).finally(() => setModelsLoading(false));
         }
+
+        // Load Catalog
+        const catRows = await db.select<ServiceCatalogItem[]>("SELECT * FROM service_catalog ORDER BY sort_order ASC");
+        setCatalog(catRows);
       } catch (e) {
         console.error("Failed to load settings:", e);
       }
@@ -198,6 +204,38 @@ export default function Setari() {
       console.error("Failed to save settings:", err);
       alert(`Eroare la salvarea setărilor:\n${err instanceof Error ? err.message : String(err)}`);
     }
+  };
+
+  const handleSaveCatalogItem = async () => {
+    if (!editingSvc?.name) return;
+    const db = await getDb();
+    try {
+      if (editingSvc.id) {
+        await db.execute(
+          "UPDATE service_catalog SET category=?, name=?, description=?, default_price=?, unit=?, is_recurring=?, sort_order=? WHERE id=?",
+          [editingSvc.category, editingSvc.name, editingSvc.description || "", editingSvc.default_price || 0, editingSvc.unit || "buc", editingSvc.is_recurring ? 1 : 0, editingSvc.sort_order || 0, editingSvc.id]
+        );
+      } else {
+        await db.execute(
+          "INSERT INTO service_catalog (category, name, description, default_price, unit, is_recurring, sort_order) VALUES (?,?,?,?,?,?,?)",
+          [editingSvc.category || "General", editingSvc.name, editingSvc.description || "", editingSvc.default_price || 0, editingSvc.unit || "buc", editingSvc.is_recurring ? 1 : 0, editingSvc.sort_order || 0]
+        );
+      }
+      setEditingSvc(null);
+      const rows = await db.select<ServiceCatalogItem[]>("SELECT * FROM service_catalog ORDER BY sort_order ASC");
+      setCatalog(rows);
+      toast("Catalog actualizat");
+    } catch (e) {
+      toast("Eroare la salvare item catalog", "error");
+    }
+  };
+
+  const handleDeleteCatalogItem = async (id: number) => {
+    if (!confirm("Ești sigur că ștergi acest serviciu din catalog?")) return;
+    const db = await getDb();
+    await db.execute("DELETE FROM service_catalog WHERE id=?", [id]);
+    setCatalog(prev => prev.filter(i => i.id !== id));
+    toast("Serviciu șters");
   };
 
   return (
@@ -578,7 +616,120 @@ export default function Setari() {
             </div>
           </div>
         ))}
+
+        {/* ── Catalog Servicii ── */}
+        <div className="card" style={{ overflow: "hidden", border: "1px solid var(--border-md)" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-1)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 26, height: 26, borderRadius: "var(--r-sm)", background: "var(--blue-dim)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ListPlus size={13} color="var(--blue)" />
+              </div>
+              <span style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 13, color: "var(--tx-1)" }}>
+                Catalog Servicii (Oferte)
+              </span>
+            </div>
+            <button className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setEditingSvc({ name: "", category: "General", default_price: 0, unit: "buc", is_recurring: false })}>
+              <Plus size={12} /> Adaugă serviciu
+            </button>
+          </div>
+
+          <div style={{ padding: "0" }}>
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-base)", display: "grid", gridTemplateColumns: "1fr 100px 80px 40px", gap: 12, fontSize: 11, fontWeight: 700, color: "var(--tx-3)", textTransform: "uppercase" }}>
+              <span>Nume Serviciu / Categorie</span>
+              <span style={{ textAlign: "right" }}>Preț (lei)</span>
+              <span style={{ textAlign: "center" }}>Tip</span>
+              <span></span>
+            </div>
+            {catalog.map(item => (
+              <div key={item.id} className="catalog-row" style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "1fr 100px 80px 40px", gap: 12, alignItems: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--tx-1)" }}>{item.name}</span>
+                  <span style={{ fontSize: 11, color: "var(--tx-4)" }}>{item.category}</span>
+                </div>
+                <div style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600 }}>
+                  {item.default_price.toLocaleString()} lei
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: item.is_recurring ? "var(--blue-dim)" : "var(--bg-3)", color: item.is_recurring ? "var(--blue)" : "var(--tx-3)" }}>
+                    {item.is_recurring ? "RECURENT" : "PROIECT"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button className="btn btn-ghost" style={{ padding: 4 }} onClick={() => setEditingSvc(item)} title="Editează">
+                    <Bot size={12} />
+                  </button>
+                  <button className="btn btn-danger-ghost" style={{ padding: 4 }} onClick={() => handleDeleteCatalogItem(item.id)} title="Șterge">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {catalog.length === 0 && (
+              <div style={{ padding: 40, textAlign: "center", color: "var(--tx-4)", fontSize: 12 }}>
+                Nu ai servicii în catalog. Folosește butonul de sus pentru a adăuga.
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
+
+      {/* Modal Editare Serviciu */}
+      {editingSvc && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setEditingSvc(null)}>
+          <div className="modal" style={{ width: 450 }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>{editingSvc.id ? "Editează Serviciu" : "Serviciu Nou"}</h3>
+              <button className="btn btn-ghost" style={{ padding: 6 }} onClick={() => setEditingSvc(null)}><X size={16} /></button>
+            </div>
+            <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Nume Serviciu</div>
+                <input className="field" value={editingSvc.name || ""} onChange={e => setEditingSvc({ ...editingSvc, name: e.target.value })} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Categorie</div>
+                  <input className="field" value={editingSvc.category || ""} onChange={e => setEditingSvc({ ...editingSvc, category: e.target.value })} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Ordine sortare</div>
+                  <input className="field" type="number" value={editingSvc.sort_order || 0} onChange={e => setEditingSvc({ ...editingSvc, sort_order: Number(e.target.value) })} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Preț default (lei)</div>
+                  <input className="field" type="number" value={editingSvc.default_price || 0} onChange={e => setEditingSvc({ ...editingSvc, default_price: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 600, marginBottom: 6 }}>Unitate</div>
+                  <input className="field" value={editingSvc.unit || "buc"} onChange={e => setEditingSvc({ ...editingSvc, unit: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+                  <input type="checkbox" checked={!!editingSvc.is_recurring} onChange={e => setEditingSvc({ ...editingSvc, is_recurring: e.target.checked })} />
+                  Acest serviciu este recurent (pentru Abonament)
+                </label>
+              </div>
+            </div>
+            <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setEditingSvc(null)}>Anulează</button>
+              <button className="btn btn-primary" onClick={handleSaveCatalogItem}>Salvează</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function X({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
   );
 }

@@ -5,6 +5,7 @@ import GlobalSearch from "@/components/GlobalSearch";
 import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Clienti from "@/pages/Clienti";
+import Oferte from "@/pages/Oferte";
 import Facturi from "@/pages/Facturi";
 import Contracte from "@/pages/Contracte";
 import Cheltuieli from "@/pages/Cheltuieli";
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="clienti" element={<Clienti />} />
+              <Route path="oferte" element={<Oferte />} />
               <Route path="facturi" element={<Facturi />} />
               <Route path="contracte" element={<Contracte />} />
               <Route path="cheltuieli" element={<Cheltuieli />} />

@@ -3,7 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText,
   FileSignature, Receipt, Calculator, Settings,
-  BarChart3, FileCheck, Search, Bot
+  BarChart3, FileCheck, Search, Bot, FileSpreadsheet
 } from "lucide-react";
 import { getSetting, isTauri } from "@/lib/db";
 import type { OperatingMode } from "@/types";
@@ -12,6 +12,7 @@ import GeminiSidebar from "./GeminiSidebar";
 const nav = [
   { to: "/",           icon: LayoutDashboard, label: "Dashboard" },
   { to: "/clienti",   icon: Users,            label: "Clienți"   },
+  { to: "/oferte",    icon: FileSpreadsheet,  label: "Oferte"   },
   { to: "/facturi",   icon: FileText,         label: "Facturi", ddaLabel: "Venituri" },
   { to: "/contracte", icon: FileSignature,    label: "Contracte" },
   { to: "/cheltuieli", icon: Receipt,          label: "Cheltuieli" },

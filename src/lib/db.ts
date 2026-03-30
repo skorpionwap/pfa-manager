@@ -95,13 +95,97 @@ async function initSchema(db: Database) {
     );
   `);
 
+  // ── Catalog servicii reutilizabile ──────────────────────────────────────────
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS service_catalog (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT NOT NULL DEFAULT 'general',
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      default_price REAL DEFAULT 0,
+      unit TEXT DEFAULT 'buc',
+      is_recurring INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  // ── Oferte ──────────────────────────────────────────────────────────────────
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS quotes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      number TEXT NOT NULL UNIQUE,
+      client_id INTEGER NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      project_type TEXT DEFAULT 'site_prezentare',
+      page_count INTEGER DEFAULT 0,
+      items TEXT NOT NULL DEFAULT '[]',
+      subscription_items TEXT DEFAULT '[]',
+      subscription_price REAL DEFAULT 0,
+      subscription_months INTEGER DEFAULT 12,
+      subscription_start_date TEXT DEFAULT '',
+      has_subscription INTEGER DEFAULT 0,
+      subtotal REAL DEFAULT 0,
+      discount_percent REAL DEFAULT 0,
+      discount_amount REAL DEFAULT 0,
+      total REAL DEFAULT 0,
+      delivery_days INTEGER DEFAULT 30,
+      valid_until TEXT DEFAULT '',
+      status TEXT DEFAULT 'draft',
+      notes TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (client_id) REFERENCES clients(id)
+    );
+  `);
+
   // Default settings
   await db.execute(`
     INSERT OR IGNORE INTO settings(key, value) VALUES
       ('operating_mode', 'dda'),
       ('invoice_series', 'FA'),
-      ('invoice_counter', '1')
+      ('invoice_counter', '1'),
+      ('quote_series', 'OF'),
+      ('quote_counter', '1')
   `);
+
+  // ── Seed catalog servicii (prima rulare) ─────────────────────────────────────
+  const catalogCount = await db.select<{ cnt: number }[]>('SELECT COUNT(*) as cnt FROM service_catalog');
+  if (catalogCount[0]?.cnt === 0) {
+    const seedServices = [
+      // Aspect & Identitate Vizuală
+      ['Aspect & Identitate Vizuală', 'Schițe inițiale & structura paginilor', 'Wireframe-uri pentru toate paginile principale ale site-ului', 300, 'proiect', 0, 1],
+      ['Aspect & Identitate Vizuală', 'Design complet al interfeței', 'Design UI/UX profesional adaptat brandului tău', 1200, 'proiect', 0, 2],
+      ['Aspect & Identitate Vizuală', 'Prototip interactiv (clickabil)', 'Simulare completă a site-ului înainte de dezvoltare', 500, 'proiect', 0, 3],
+      ['Aspect & Identitate Vizuală', 'Kit identitate vizuală digitală', 'Logo, culori, fonturi și elemente grafice pentru online', 800, 'proiect', 0, 4],
+      // Construirea Site-ului
+      ['Construirea Site-ului / Aplicației', 'Pagina ta de prezentare online (1-5 pagini)', 'Site de tip landing page cu până la 5 secțiuni', 1500, 'proiect', 0, 10],
+      ['Construirea Site-ului / Aplicației', 'Site complet de prezentare (5-15 pagini)', 'Site multi-pagină cu navigare, contact și blog', 3500, 'proiect', 0, 11],
+      ['Construirea Site-ului / Aplicației', 'Magazin online (E-commerce)', 'Platformă de vânzări online cu coș și plăți', 6000, 'proiect', 0, 12],
+      ['Construirea Site-ului / Aplicației', 'Aplicație web personalizată', 'Aplicație cu funcționalități avansate și bază de date', 8000, 'proiect', 0, 13],
+      // Funcționalități
+      ['Funcționalități & Integrări', 'Sistem comenzi & plăți online', 'Integrare Stripe / PayU / mobilPay pentru plăți card', 1200, 'buc', 0, 20],
+      ['Funcționalități & Integrări', 'Panou de administrare conținut', 'Sistem prin care poți edita textele și imaginile singur', 1500, 'buc', 0, 21],
+      ['Funcționalități & Integrări', 'Sistem conturi utilizatori & autentificare', 'Login, înregistrare, roluri și permisiuni', 1000, 'buc', 0, 22],
+      // Mobile & PWA
+      ['Aplicație pe Telefon & PWA', 'Aplicație Android instalabilă', 'Aplicație nativă pentru Android din site-ul tău (Capacitor)', 2000, 'proiect', 0, 30],
+      ['Aplicație pe Telefon & PWA', 'Site instalabil pe telefon (PWA)', 'Site-ul tău funcționează ca o aplicație pe orice telefon', 800, 'proiect', 0, 31],
+      ['Aplicație pe Telefon & PWA', 'Notificări push pe telefon', 'Trimite notificări utilizatorilor direct pe telefon', 600, 'buc', 0, 32],
+      // SEO
+      ['Vizibilitate pe Google (SEO)', 'Analiză & raport SEO tehnic', 'Audit complet al site-ului pentru Google, cu raport detaliat', 400, 'buc', 0, 40],
+      ['Vizibilitate pe Google (SEO)', 'Optimizare viteză & performanță', 'Site rapid = poziții mai bune în Google', 600, 'buc', 0, 41],
+      ['Vizibilitate pe Google (SEO)', 'Configurare indexare & sitemap XML', 'Asigurăm că Google indexează corect toate paginile tale', 300, 'buc', 0, 42],
+      // Mentenanță
+      ['Mentenanță Lunară & Suport', 'Găzduire & mentenanță lunară', 'Hosting, backup zilnic, monitorizare 24/7', 150, 'lună', 1, 50],
+      ['Mentenanță Lunară & Suport', 'Actualizări de conținut & securitate', 'Actualizăm textele, imaginile și menținem site-ul securizat', 250, 'lună', 1, 51],
+      ['Mentenanță Lunară & Suport', 'Optimizare SEO lunară', 'Raport lunar, ajustări cuvinte cheie, conținut proaspăt', 350, 'lună', 1, 52],
+    ];
+    for (const [cat, name, desc, price, unit, recurring, order] of seedServices) {
+      await db.execute(
+        'INSERT OR IGNORE INTO service_catalog(category,name,description,default_price,unit,is_recurring,sort_order) VALUES(?,?,?,?,?,?,?)',
+        [cat, name, desc, price, unit, recurring, order]
+      );
+    }
+  }
 }
 
 export async function getSetting(key: string): Promise<string> {
@@ -157,4 +241,17 @@ export async function peekInvoiceNumber(): Promise<string> {
 export async function bumpInvoiceCounter(): Promise<void> {
   const counter = parseInt((await getSetting("invoice_counter")) || "1", 10);
   await setSetting("invoice_counter", String(counter + 1));
+}
+
+/** Citește următorul număr de ofertă fără să incrementeze contorul. */
+export async function peekQuoteNumber(): Promise<string> {
+  const series = (await getSetting("quote_series")) || "OF";
+  const counter = parseInt((await getSetting("quote_counter")) || "1", 10);
+  return `${series}-${String(counter).padStart(4, "0")}`;
+}
+
+/** Incrementează contorul oferte — apelat DOAR după INSERT reușit. */
+export async function bumpQuoteCounter(): Promise<void> {
+  const counter = parseInt((await getSetting("quote_counter")) || "1", 10);
+  await setSetting("quote_counter", String(counter + 1));
 }

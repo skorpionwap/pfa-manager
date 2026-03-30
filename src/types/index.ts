@@ -77,3 +77,49 @@ export interface Settings {
   pfa_mode: PfaMode;
   pfa_norma_valoare: number;
 }
+
+export interface ServiceCatalogItem {
+  id: number;
+  category: string;
+  name: string;
+  description: string;
+  default_price: number;
+  unit: string;
+  is_recurring: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface QuoteItem {
+  service_id?: number;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  total: number;
+}
+
+export interface Quote {
+  id: number;
+  number: string;
+  client_id: number;
+  client_name?: string;
+  title: string;
+  project_type: string;
+  page_count: number;
+  items: QuoteItem[];
+  subscription_items: QuoteItem[];
+  subscription_price: number;
+  subscription_months: number;
+  subscription_start_date: string;
+  has_subscription: boolean;
+  subtotal: number;
+  discount_percent: number;
+  discount_amount: number;
+  total: number;
+  delivery_days: number;
+  valid_until: string;
+  status: "draft" | "sent" | "accepted" | "rejected" | "expired";
+  notes: string;
+  created_at: string;
+}
