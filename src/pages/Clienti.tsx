@@ -6,16 +6,21 @@ import { useToast } from "@/components/Toast";
 import type { Client } from "@/types";
 
 const empty = (): Omit<Client, "id" | "created_at"> => ({
-  name: "", cif: "", address: "", email: "", phone: "", contact_person: "",
+  name: "", cif: "", reg_com: "", address: "", email: "", phone: "", contact_person: "",
+  bank: "", iban: "", legal_representative: "", representative_function: ""
 });
 
 const FIELDS = [
-  { key: "name",           label: "Nume / Denumire *", placeholder: "SC Exemplu SRL",        span: 2 },
-  { key: "cif",            label: "CIF / CNP",          placeholder: "RO12345678",             span: 1 },
-  { key: "contact_person", label: "Persoană contact",   placeholder: "Ion Popescu",            span: 1 },
-  { key: "email",          label: "Email",               placeholder: "contact@firma.ro",       span: 1 },
-  { key: "phone",          label: "Telefon",             placeholder: "0722 000 000",           span: 1 },
-  { key: "address",        label: "Adresă",              placeholder: "Str. Exemplu nr. 1, București", span: 2 },
+  { key: "name",                    label: "Nume / Denumire *",      placeholder: "SC Exemplu SRL",        span: 2 },
+  { key: "cif",                     label: "CIF / CNP",              placeholder: "RO12345678",            span: 1 },
+  { key: "reg_com",                 label: "Nr. Reg. Comerțului",    placeholder: "J40/123/2020",          span: 1 },
+  { key: "address",                 label: "Adresă sediu",           placeholder: "Str. Exemplu nr. 1, București", span: 2 },
+  { key: "legal_representative",    label: "Reprezentant legal",     placeholder: "Ion Popescu",           span: 1 },
+  { key: "representative_function", label: "Funcție (ex: Admin)",    placeholder: "Administrator",         span: 1 },
+  { key: "email",                   label: "Email",                  placeholder: "contact@firma.ro",      span: 1 },
+  { key: "phone",                   label: "Telefon",                placeholder: "0722 000 000",          span: 1 },
+  { key: "bank",                    label: "Banca",                  placeholder: "Denumirea băncii",      span: 1 },
+  { key: "iban",                    label: "Cont IBAN",              placeholder: "RO... ",                span: 1 },
 ] as const;
 
 export default function Clienti() {
@@ -37,7 +42,11 @@ export default function Clienti() {
   const openNew = () => { setEditing(null); setForm(empty()); setShowForm(true); };
   const openEdit = (c: Client) => {
     setEditing(c);
-    setForm({ name: c.name, cif: c.cif, address: c.address, email: c.email, phone: c.phone, contact_person: c.contact_person });
+    setForm({ 
+      name: c.name, cif: c.cif, reg_com: c.reg_com ?? "", address: c.address, email: c.email, phone: c.phone, 
+      contact_person: c.contact_person, bank: c.bank ?? "", iban: c.iban ?? "", 
+      legal_representative: c.legal_representative ?? "", representative_function: c.representative_function ?? "" 
+    });
     setShowForm(true);
   };
 
@@ -46,13 +55,13 @@ export default function Clienti() {
     const db = await getDb();
     if (editing) {
       await db.execute(
-        "UPDATE clients SET name=?,cif=?,address=?,email=?,phone=?,contact_person=? WHERE id=?",
-        [form.name, form.cif, form.address, form.email, form.phone, form.contact_person, editing.id]
+        "UPDATE clients SET name=?,cif=?,reg_com=?,address=?,email=?,phone=?,contact_person=?,bank=?,iban=?,legal_representative=?,representative_function=? WHERE id=?",
+        [form.name, form.cif, form.reg_com, form.address, form.email, form.phone, form.contact_person, form.bank, form.iban, form.legal_representative, form.representative_function, editing.id]
       );
     } else {
       await db.execute(
-        "INSERT INTO clients(name,cif,address,email,phone,contact_person) VALUES(?,?,?,?,?,?)",
-        [form.name, form.cif, form.address, form.email, form.phone, form.contact_person]
+        "INSERT INTO clients(name,cif,reg_com,address,email,phone,contact_person,bank,iban,legal_representative,representative_function) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        [form.name, form.cif, form.reg_com, form.address, form.email, form.phone, form.contact_person, form.bank, form.iban, form.legal_representative, form.representative_function]
       );
     }
     setShowForm(false);
@@ -129,9 +138,9 @@ export default function Clienti() {
             <tr>
               <th style={{ width: 40 }}></th>
               <th>Nume</th>
-              <th>CIF</th>
+              <th>CUI / Reg.Com.</th>
+              <th>Reprezentant</th>
               <th>Contact</th>
-              <th>Email</th>
               <th style={{ width: 80 }}></th>
             </tr>
           </thead>
@@ -157,9 +166,17 @@ export default function Clienti() {
                   </div>
                 </td>
                 <td style={{ color: "var(--tx-1)", fontWeight: 500 }}>{c.name}</td>
-                <td><span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tx-3)" }}>{c.cif || "—"}</span></td>
-                <td style={{ color: "var(--tx-3)" }}>{c.contact_person || "—"}</td>
-                <td style={{ color: "var(--tx-3)" }}>{c.email || "—"}</td>
+                <td>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tx-3)", display: "block" }}>{c.cif || "—"}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--tx-4)", display: "block" }}>{c.reg_com}</span>
+                </td>
+                <td style={{ color: "var(--tx-3)", fontSize: 13 }}>
+                  <span style={{ color: "var(--tx-1)" }}>{c.legal_representative || "—"}</span>
+                  {c.representative_function && <span style={{ display: "block", fontSize: 11, color: "var(--tx-4)" }}>{c.representative_function}</span>}
+                </td>
+                <td style={{ color: "var(--tx-3)", fontSize: 13 }}>
+                  <span style={{ display: "block" }}>{c.phone || c.email || "—"}</span>
+                </td>
                 <td>
                   <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                     <button className="btn btn-ghost" style={{ padding: "5px 8px" }} onClick={() => openEdit(c)}>
@@ -199,10 +216,10 @@ export default function Clienti() {
             </div>
 
             {/* Fields */}
-            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
               {FIELDS.map(({ key, label, placeholder, span }) => (
                 <div key={key} style={{ gridColumn: `span ${span}` }}>
-                  <label style={{ display: "block", fontSize: 11, color: "var(--tx-3)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>
+                  <label style={{ display: "block", fontSize: 10, color: "var(--tx-3)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4 }}>
                     {label}
                   </label>
                   <input
@@ -210,7 +227,7 @@ export default function Clienti() {
                     value={form[key as keyof typeof form]}
                     onChange={e => setForm({ ...form, [key]: e.target.value })}
                     placeholder={placeholder}
-                    onKeyDown={e => e.key === "Enter" && key === "address" && save()}
+                    onKeyDown={e => e.key === "Enter" && key === "iban" && save()}
                   />
                 </div>
               ))}

@@ -195,11 +195,28 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
       </div>
       )}
 
+      {/* Commercial Terms */}
+      <div style={{ marginBottom: 40, pageBreakInside: "avoid" }}>
+        <h4 style={{ fontSize: 10, fontWeight: 800, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12, borderBottom: "1px solid #eee", paddingBottom: 6 }}>
+          Termeni Comerciali și de Achiziție
+        </h4>
+        <div style={{ fontSize: 11, lineHeight: 1.6, color: "#555", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 40px" }}>
+          <div>
+            <p style={{ margin: "0 0 8px" }}><strong>1. Facturare și Plată:</strong> Se va emite o factură de avans (ex: 30-50%) la semnarea contractului, restul urmând a fi facturat conform tranșelor agreate la predarea proiectului.</p>
+            <p style={{ margin: "0 0 8px" }}><strong>2. Termen de valabilitate:</strong> Condițiile financiare din prezenta ofertă sunt valabile până la data de <strong>{quote.valid_until || "scadență"}</strong>.</p>
+          </div>
+          <div>
+            <p style={{ margin: "0 0 8px" }}><strong>3. Drepturi de autor:</strong> Drepturile patrimoniale de autor asupra codului și design-ului se vor transfera exclusiv Beneficiarului după achitarea integrală a proiectului, conform Legii 8/1996.</p>
+            <p style={{ margin: "0 0 8px" }}><strong>4. Acceptanță:</strong> Semnarea acestei oferte ține loc de acceptare de principiu și declanșează redactarea contractului final.</p>
+          </div>
+        </div>
+      </div>
+
       {/* Notes */}
       {quote.notes && (
-        <div style={{ marginBottom: 60 }}>
+        <div style={{ marginBottom: 60, pageBreakInside: "avoid" }}>
           <h4 style={{ fontSize: 10, fontWeight: 800, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>
-            Note și Condiții Contractuale
+            Note și Condiții Specifice
           </h4>
           <div style={{ fontSize: 12, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "#444" }}>{quote.notes}</div>
         </div>
@@ -216,7 +233,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
         <div style={{ width: 220 }}>
           <div style={{ borderTop: "1px solid #000", marginTop: 40, paddingTop: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700 }}>{client?.name}</div>
-            <div style={{ fontSize: 10, color: "#999" }}>Beneficiar (Semnătură accept)</div>
+            <div style={{ fontSize: 10, color: "#999" }}>Prin {client?.legal_representative || "Reprezentant legal"}</div>
           </div>
         </div>
       </div>

@@ -16,7 +16,15 @@ export interface ContractAnalysis {
   numar: string;
   data: string;
   valoare: number;
-  parti: { beneficiar: string; prestator: string };
+  parti: { 
+    beneficiar: string; 
+    beneficiar_cif?: string;
+    beneficiar_reg_com?: string;
+    beneficiar_iban?: string;
+    beneficiar_banca?: string;
+    beneficiar_reprezentant?: string;
+    prestator: string; 
+  };
   riscuri: ContractRisk[];
   rezumat: string;
 }
@@ -109,6 +117,11 @@ const CONTRACT_ANALYSIS_PROMPT = `Ești un asistent juridic specializat în drep
   "valoare": număr în RON (fără punct sau virgulă) sau 0 dacă nu există,
   "parti": {
     "beneficiar": "numele companiei/persoanei care contractează serviciile",
+    "beneficiar_cif": "CIF sau CUI client",
+    "beneficiar_reg_com": "Nr. Reg. Comerțului client (ex: J40/...)",
+    "beneficiar_iban": "IBAN-ul clientului dacă e menționat",
+    "beneficiar_banca": "Banca clientului",
+    "beneficiar_reprezentant": "Numele celui care semnează pentru client",
     "prestator": "numele freelancerului/prestatorului dacă există sau string gol"
   },
   "riscuri": [
@@ -147,6 +160,10 @@ export interface ExtractedInvoice {
   emitent: string;     // company/person that issued the document
   descriere: string;   // short description of services/goods
   tip: "factura" | "pvr" | "bon" | "altul";
+  emitent_cif?: string;
+  emitent_reg_com?: string;
+  emitent_iban?: string;
+  emitent_banca?: string;
 }
 
 const INVOICE_ANALYSIS_PROMPT = `Ești un asistent contabil român. Analizează documentul financiar atașat (factură, proces-verbal de recepție, bon, sau alt document financiar) și returnează EXCLUSIV un JSON valid, fără text suplimentar sau markdown:
@@ -157,7 +174,11 @@ const INVOICE_ANALYSIS_PROMPT = `Ești un asistent contabil român. Analizează 
   "total": număr în RON fără simbol valoric (ex: 5000.00) sau 0 dacă nu există,
   "emitent": "numele companiei sau persoanei care a emis documentul",
   "descriere": "descriere scurtă a serviciilor/bunurilor facturate, max 120 caractere",
-  "tip": "factura" sau "pvr" sau "bon" sau "altul"
+  "tip": "factura" sau "pvr" sau "bon" sau "altul",
+  "emitent_cif": "CIF/CUI emitent",
+  "emitent_reg_com": "Reg. Com. emitent",
+  "emitent_iban": "IBAN emitent",
+  "emitent_banca": "Banca emitent"
 }`;
 
 export async function analyzeClientInvoice(filePath: string): Promise<ExtractedInvoice> {

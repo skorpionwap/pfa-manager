@@ -199,20 +199,27 @@ export default function Contracte() {
 
     const client = clients.find(c => c.id === clientId);
     const clientDetails = [
-      client?.cif ? `CIF ${client.cif}` : "",
+      client?.cif ? `CIF/CUI ${client.cif}` : "",
+      client?.reg_com ? `Reg. Com. ${client.reg_com}` : "",
       client?.address ? `cu sediul în ${client.address}` : "",
     ].filter(Boolean).join(", ");
 
     const vars: Record<string, string> = {
       AUTOR_NUME:       s.my_name    || "Numele Dvs.",
       AUTOR_CNP:        s.my_cif     || "CNP/CIF",
+      AUTOR_REG_COM:    s.my_reg_com || "—",
       AUTOR_ADRESA:     s.my_address || "Adresa Dvs.",
       AUTOR_EMAIL:      s.my_email   || "email@exemplu.ro",
       AUTOR_IBAN:       s.my_iban    || "RO................",
       AUTOR_BANCA:      s.my_bank    || "Banca...",
+      AUTOR_FUNCTIE:    s.my_function || "Autor/Prestator",
 
       CESIONAR_NUME:    client?.name || "Beneficiar",
       CESIONAR_DETALII: clientDetails || "cu datele de identificare...",
+      CESIONAR_REPREZENTANT: client?.legal_representative || "____________",
+      CESIONAR_FUNCTIE: client?.representative_function || "____________",
+      CESIONAR_BANCA:   client?.bank || "Banca...",
+      CESIONAR_IBAN:    client?.iban || "RO...",
 
       CONTRACT_NR:      formData.number || "—",
       DATA:             formData.date,
@@ -287,17 +294,23 @@ export default function Contracte() {
             nameHint.toLowerCase().includes(c.name.toLowerCase()))
         : undefined;
 
-      setForm(f => ({
-        ...f,
-        file_path: selected,
-        number:    analysis.numar  || f.number,
-        date:      analysis.data   || f.date,
-        amount:    analysis.valoare > 0 ? analysis.valoare : f.amount,
-        client_id: matchedClient?.id ?? f.client_id,
-        notes:     analysis.riscuri.length > 0
-          ? `⚠ ${analysis.riscuri.length} clauze atenționare detectate de Gemini.${f.notes ? " " + f.notes : ""}`
-          : f.notes,
-      }));
+      setForm(f => {
+        const notesArr = [];
+        if (analysis.parti.beneficiar_reg_com) notesArr.push(`Reg. Com: ${analysis.parti.beneficiar_reg_com}`);
+        if (analysis.parti.beneficiar_iban) notesArr.push(`IBAN: ${analysis.parti.beneficiar_iban}`);
+        if (analysis.parti.beneficiar_reprezentant) notesArr.push(`Reprezentant: ${analysis.parti.beneficiar_reprezentant}`);
+        if (analysis.riscuri.length > 0) notesArr.push(`⚠ ${analysis.riscuri.length} clauze risc.`);
+        
+        return {
+          ...f,
+          file_path: selected,
+          number:    analysis.numar  || f.number,
+          date:      analysis.data   || f.date,
+          amount:    analysis.valoare > 0 ? analysis.valoare : f.amount,
+          client_id: matchedClient?.id ?? f.client_id,
+          notes:     notesArr.length > 0 ? notesArr.join(" | ") : f.notes,
+        };
+      });
 
       if (analysis.riscuri.length > 0) {
         setAnalysisResult(analysis);  // deschide modalul de riscuri existent
@@ -386,10 +399,12 @@ export default function Contracte() {
     f.date    = analysis.data  || today();
     f.amount  = analysis.valoare || 0;
     f.status  = "pending";
-    f.client_id = matchedClient?.id ?? null;
-    f.notes   = !matchedClient && analysis.parti.beneficiar
-      ? `Client identificat în contract: ${analysis.parti.beneficiar}`
-      : "";
+    const notesArr = [];
+    if (!matchedClient && analysis.parti.beneficiar) notesArr.push(`Client extras: ${analysis.parti.beneficiar}`);
+    if (analysis.parti.beneficiar_reg_com) notesArr.push(`Reg. Com: ${analysis.parti.beneficiar_reg_com}`);
+    if (analysis.parti.beneficiar_iban) notesArr.push(`IBAN: ${analysis.parti.beneficiar_iban}`);
+    
+    f.notes = notesArr.join(" | ");
     setForm(f);
     setEditing(null);
     setAnalysisResult(null);

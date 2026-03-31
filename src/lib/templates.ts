@@ -39,7 +39,7 @@ export const TEMPLATE_HTML: Record<string, string> = {
 
   <section style="${SEC}">
     <h2 style="${H2}">I. Părțile Contractante</h2>
-    <p style="${P}"><strong>1. Cedentul (Autorul):</strong> <strong>{{AUTOR_NUME}}</strong>, domiciliat în {{AUTOR_ADRESA}}, CNP/CIF <strong>{{AUTOR_CNP}}</strong>, email: {{AUTOR_EMAIL}}, denumit în continuare <em>„CEDENTUL"</em>.</p>
+    <p style="${P}"><strong>1. Cedentul (Autorul):</strong> <strong>{{AUTOR_NUME}}</strong>, {{AUTOR_FUNCTIE}}, domiciliat în {{AUTOR_ADRESA}}, CNP/CIF <strong>{{AUTOR_CNP}}</strong>, Reg. Com. {{AUTOR_REG_COM}}, email: {{AUTOR_EMAIL}}, denumit în continuare <em>„CEDENTUL"</em>.</p>
     <p style="margin:8px 0;font-weight:600;text-align:center;color:#555;">și</p>
     <p style="${P}"><strong>2. Cesionarul (Beneficiarul):</strong> <strong>{{CESIONAR_NUME}}</strong>, {{CESIONAR_DETALII}}, denumit în continuare <em>„CESIONARUL"</em>.</p>
   </section>
@@ -86,7 +86,8 @@ export const TEMPLATE_HTML: Record<string, string> = {
     <div style="width:45%;text-align:right;">
       <p style="font-weight:700;margin-bottom:46px;text-transform:uppercase;font-size:12px;">Cesionar (Beneficiar)</p>
       <div style="border-bottom:1px solid #000;width:220px;margin-left:auto;margin-bottom:7px;"></div>
-      <p style="font-size:13px;color:#333;">{{CESIONAR_NUME}}</p>
+      <p style="font-size:13px;color:#333;margin-bottom:2px;"><strong>{{CESIONAR_NUME}}</strong></p>
+      <p style="font-size:11px;color:#555;">prin {{CESIONAR_REPREZENTANT}}</p>
     </div>
   </div>
 </div>
@@ -103,7 +104,7 @@ export const TEMPLATE_HTML: Record<string, string> = {
 
   <section style="${SEC}">
     <h2 style="${H2}">I. Părțile Contractante</h2>
-    <p style="${P}"><strong>1. Cedentul (Autorul):</strong> <strong>{{AUTOR_NUME}}</strong>, domiciliat în {{AUTOR_ADRESA}}, CNP/CIF <strong>{{AUTOR_CNP}}</strong>, email: {{AUTOR_EMAIL}}, denumit în continuare <em>„CEDENTUL"</em>.</p>
+    <p style="${P}"><strong>1. Cedentul (Autorul):</strong> <strong>{{AUTOR_NUME}}</strong>, {{AUTOR_FUNCTIE}}, domiciliat în {{AUTOR_ADRESA}}, CNP/CIF <strong>{{AUTOR_CNP}}</strong>, Reg. Com. {{AUTOR_REG_COM}}, email: {{AUTOR_EMAIL}}, denumit în continuare <em>„CEDENTUL"</em>.</p>
     <p style="margin:8px 0;font-weight:600;text-align:center;color:#555;">și</p>
     <p style="${P}"><strong>2. Cesionarul (Beneficiarul):</strong> <strong>{{CESIONAR_NUME}}</strong>, {{CESIONAR_DETALII}}, denumit în continuare <em>„CESIONARUL"</em>.</p>
   </section>
@@ -154,7 +155,8 @@ export const TEMPLATE_HTML: Record<string, string> = {
     <div style="width:45%;text-align:right;">
       <p style="font-weight:700;margin-bottom:46px;text-transform:uppercase;font-size:12px;">Cesionar (Beneficiar)</p>
       <div style="border-bottom:1px solid #000;width:220px;margin-left:auto;margin-bottom:7px;"></div>
-      <p style="font-size:13px;color:#333;">{{CESIONAR_NUME}}</p>
+      <p style="font-size:13px;color:#333;margin-bottom:2px;"><strong>{{CESIONAR_NUME}}</strong></p>
+      <p style="font-size:11px;color:#555;">prin {{CESIONAR_REPREZENTANT}}</p>
     </div>
   </div>
 </div>
@@ -170,7 +172,7 @@ export const TEMPLATE_HTML: Record<string, string> = {
 
   <section style="${SEC}">
     <h2 style="${H2}">I. Părțile Contractante</h2>
-    <p style="${P}"><strong>1. Prestatorul:</strong> <strong>{{AUTOR_NUME}}</strong>, cu sediul/domiciliul în {{AUTOR_ADRESA}}, CIF/CNP <strong>{{AUTOR_CNP}}</strong>, email: {{AUTOR_EMAIL}}, denumit în continuare <em>„PRESTATORUL"</em>.</p>
+    <p style="${P}"><strong>1. Prestatorul:</strong> <strong>{{AUTOR_NUME}}</strong>, {{AUTOR_FUNCTIE}}, cu sediul/domiciliul în {{AUTOR_ADRESA}}, CIF/CNP <strong>{{AUTOR_CNP}}</strong>, Reg. Com. {{AUTOR_REG_COM}}, email: {{AUTOR_EMAIL}}, denumit în continuare <em>„PRESTATORUL"</em>.</p>
     <p style="margin:8px 0;font-weight:600;text-align:center;color:#555;">și</p>
     <p style="${P}"><strong>2. Beneficiarul:</strong> <strong>{{CESIONAR_NUME}}</strong>, {{CESIONAR_DETALII}}, denumit în continuare <em>„BENEFICIARUL"</em>.</p>
   </section>
@@ -220,7 +222,8 @@ export const TEMPLATE_HTML: Record<string, string> = {
     <div style="width:45%;text-align:right;">
       <p style="font-weight:700;margin-bottom:46px;text-transform:uppercase;font-size:12px;">Beneficiar</p>
       <div style="border-bottom:1px solid #000;width:220px;margin-left:auto;margin-bottom:7px;"></div>
-      <p style="font-size:13px;color:#333;">{{CESIONAR_NUME}}</p>
+      <p style="font-size:13px;color:#333;margin-bottom:2px;"><strong>{{CESIONAR_NUME}}</strong></p>
+      <p style="font-size:11px;color:#555;">prin {{CESIONAR_REPREZENTANT}}</p>
     </div>
   </div>
 </div>

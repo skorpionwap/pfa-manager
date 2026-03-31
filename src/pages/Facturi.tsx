@@ -757,9 +757,17 @@ function InvoiceTipizat({ invoice, client, settings, operatingMode }: {
           <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "12px" }}>{client?.name}</div>
           <div style={{ fontSize: "13px", lineHeight: "1.6", color: "#333" }}>
             <div style={{ marginBottom: "4px" }}><strong>CIF/CUI:</strong> {client?.cif || "—"}</div>
+            {client?.reg_com && <div style={{ marginBottom: "4px" }}><strong>Reg. Com.:</strong> {client.reg_com}</div>}
             <div style={{ marginBottom: "4px" }}>{client?.address || "—"}</div>
             <div>{client?.email}</div>
             {client?.phone && <div style={{ color: "#666" }}>{client.phone}</div>}
+            {(client?.bank || client?.iban) && (
+              <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #eee", fontSize: "12px" }}>
+                <div style={{ fontWeight: "700", color: "#666" }}>Cont bancar:</div>
+                {client?.iban && <div style={{ fontFamily: "var(--font-mono)" }}>{client.iban}</div>}
+                {client?.bank && <div>{client.bank}</div>}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -867,7 +875,12 @@ function PVRTipizat({ invoice, client, settings, contract }: {
         
         <div style={{ marginTop: "15px", marginLeft: "20px" }}>
           <p><strong>1. PRESTATOR / AUTOR:</strong> {settings.my_name}, cu domiciliul/sediul în {settings.my_address}, identificat prin CIF/CNP {settings.my_cif}.</p>
-          <p style={{ marginTop: "10px" }}><strong>2. BENEFICIAR:</strong> {client?.name}, cu sediul în {client?.address}, identificat prin CUI/CIF {client?.cif}.</p>
+          <p style={{ marginTop: "10px" }}>
+            <strong>2. BENEFICIAR:</strong> {client?.name}, cu sediul în {client?.address}, 
+            identificat prin {client?.cif ? `CUI/CIF ${client.cif}` : "CUI/CIF ____________"}{client?.reg_com ? `, Reg. Com. ${client.reg_com}` : ""}, 
+            reprezentată prin {client?.legal_representative ? <strong>{client.legal_representative}</strong> : "____________________"} 
+            {client?.representative_function ? <span> în calitate de <strong>{client.representative_function}</strong></span> : ""}.
+          </p>
         </div>
       </div>
 
@@ -938,6 +951,7 @@ function PVRTipizat({ invoice, client, settings, contract }: {
           <div style={{ fontWeight: "bold", textTransform: "uppercase", marginBottom: "50px" }}>Am recepționat (Beneficiar)</div>
           <div style={{ borderBottom: "1px solid #000", width: "200px", margin: "0 auto 10px" }}></div>
           <div style={{ fontWeight: "bold" }}>{client?.name}</div>
+          <div style={{ fontSize: "12px", marginTop: "4px" }}>prin {client?.legal_representative || "____________________"}</div>
         </div>
       </div>
     </div>

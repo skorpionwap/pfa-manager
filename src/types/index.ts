@@ -2,10 +2,15 @@ export interface Client {
   id: number;
   name: string;
   cif: string;
+  reg_com?: string; // e.g. J40/123/2020
   address: string;
   email: string;
   phone: string;
   contact_person: string;
+  bank?: string;
+  iban?: string;
+  legal_representative?: string; // e.g. Ion Popescu
+  representative_function?: string; // e.g. Administrator
   created_at: string;
 }
 

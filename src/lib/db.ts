@@ -24,10 +24,15 @@ async function initSchema(db: Database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       cif TEXT DEFAULT '',
+      reg_com TEXT DEFAULT '',
       address TEXT DEFAULT '',
       email TEXT DEFAULT '',
       phone TEXT DEFAULT '',
       contact_person TEXT DEFAULT '',
+      bank TEXT DEFAULT '',
+      iban TEXT DEFAULT '',
+      legal_representative TEXT DEFAULT '',
+      representative_function TEXT DEFAULT '',
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
@@ -62,6 +67,13 @@ async function initSchema(db: Database) {
   try { await db.execute("ALTER TABLE invoices ADD COLUMN source TEXT DEFAULT 'mine'"); } catch(e) {}
   try { await db.execute("ALTER TABLE invoices ADD COLUMN file_path TEXT DEFAULT ''"); } catch(e) {}
   try { await db.execute("ALTER TABLE quotes ADD COLUMN chat_history TEXT DEFAULT '[]'"); } catch(e) {}
+  
+  // Client expansions for legal contracts
+  try { await db.execute("ALTER TABLE clients ADD COLUMN reg_com TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE clients ADD COLUMN bank TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE clients ADD COLUMN iban TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE clients ADD COLUMN legal_representative TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE clients ADD COLUMN representative_function TEXT DEFAULT ''"); } catch(e) {}
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS contracts (
