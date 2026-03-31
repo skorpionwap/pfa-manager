@@ -35,7 +35,16 @@ interface MySettings {
   my_bank: string;
   my_iban: string;
   invoice_series: string;
+  pvr_series: string;
 }
+
+const PVR_STATUS_LABELS: Record<Status, string> = {
+  draft: "Ciornă", sent: "Predat", paid: "Semnat", overdue: "Restant",
+};
+const PVR_STATUS_BADGE: Record<Status, string> = {
+  draft: "badge badge-muted", sent: "badge badge-blue",
+  paid: "badge badge-green", overdue: "badge badge-red",
+};
 
 export default function Facturi() {
   const { toast } = useToast();
@@ -102,6 +111,7 @@ export default function Facturi() {
       my_email: sm.my_email ?? "", my_phone: sm.my_phone ?? "",
       my_bank: sm.my_bank ?? "", my_iban: sm.my_iban ?? "",
       invoice_series: sm.invoice_series ?? "FA",
+      pvr_series: sm.pvr_series ?? "PV",
     });
     setOperatingMode((sm.operating_mode as OperatingMode) || "dda");
   };
@@ -191,7 +201,7 @@ export default function Facturi() {
         [clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0, source, filePath, editing.id]
       );
     } else {
-      const number = await getAndBumpNumber("invoice");
+      const number = await getAndBumpNumber(operatingMode === "dda" ? "pvr" : "invoice");
       await db.execute(
         "INSERT INTO invoices(number,client_id,contract_id,date,due_date,items,total,status,notes,category,is_signed,source,file_path) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [number, clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0, source, filePath]
@@ -199,8 +209,8 @@ export default function Facturi() {
     }
     setShowForm(false);
     load();
-    const modeName = operatingMode === "dda" ? "Venitul" : "Factura";
-    toast(editing ? `${modeName} actualizat` : `${modeName} emis`, "success");
+    const docName = operatingMode === "dda" ? "PVR" : "Factura";
+    toast(editing ? `${docName} actualizat` : `${docName} creat`, "success");
   };
 
   const remove = (id: number) => {
@@ -292,7 +302,7 @@ export default function Facturi() {
                   {inv.total.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} RON
                 </td>
                 <td>
-                  <StatusDropdown value={inv.status} onChange={s => changeStatus(inv.id, s)} />
+                  <StatusDropdown value={inv.status} onChange={s => changeStatus(inv.id, s)} mode={operatingMode} />
                 </td>
                 <td>
                   <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
@@ -321,7 +331,7 @@ export default function Facturi() {
             <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 15, color: "var(--tx-1)" }}>
-                  {editing ? `Editează ${editing.number}` : "Factură nouă"}
+                  {editing ? `Editează ${editing.number}` : operatingMode === "dda" ? "PVR nou" : "Factură nouă"}
                 </h3>
               </div>
               <button onClick={() => setShowForm(false)} style={{ background: "var(--bg-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 6, color: "var(--tx-3)", display: "flex", cursor: "pointer" }}>
@@ -464,7 +474,7 @@ export default function Facturi() {
                 <div>
                   <FieldLabel>Status</FieldLabel>
                   <select className="field" value={status} onChange={e => setStatus(e.target.value as Status)}>
-                    {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    {Object.entries(operatingMode === "dda" ? PVR_STATUS_LABELS : STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
                 {operatingMode === "dda" && (
@@ -480,7 +490,7 @@ export default function Facturi() {
               {/* Line items */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <FieldLabel style={{ marginBottom: 0 }}>Linii factură</FieldLabel>
+                  <FieldLabel style={{ marginBottom: 0 }}>{operatingMode === "dda" ? "Livrabile predate" : "Linii factură"}</FieldLabel>
                   <button className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setItems(p => [...p, emptyItem()])}>
                     <Plus size={12} /> Adaugă linie
                   </button>
@@ -556,7 +566,7 @@ export default function Facturi() {
               <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Anulează</button>
               <button className="btn btn-primary" onClick={save} disabled={!clientId}>
                 <Check size={13} strokeWidth={2.5} />
-                {editing ? "Salvează" : (operatingMode === "dda" ? "Înregistrează venit" : "Emite factură")}
+                {editing ? "Salvează" : (operatingMode === "dda" ? "Creează PVR" : "Emite factură")}
               </button>
             </div>
           </div>
@@ -631,7 +641,7 @@ export default function Facturi() {
                 {operatingMode === "dda" ? (
                   <PVRTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} contract={contracts.find(c => c.id === previewInvoice.contract_id)} />
                 ) : (
-                  <InvoiceTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} operatingMode={operatingMode} />
+                  <InvoiceTipizat invoice={previewInvoice} client={getClient(previewInvoice)} settings={settings} />
                 )}
               </div>
             )}
@@ -663,11 +673,12 @@ function FieldLabel({ children, style }: { children: React.ReactNode; style?: Re
   );
 }
 
-function StatusDropdown({ value, onChange }: { value: Status; onChange: (s: Status) => void }) {
+function StatusDropdown({ value, onChange, mode = "pfa" }: { value: Status; onChange: (s: Status) => void; mode?: OperatingMode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const labels = mode === "dda" ? PVR_STATUS_LABELS : STATUS_LABELS;
+  const badges = mode === "dda" ? PVR_STATUS_BADGE : STATUS_BADGE;
 
-  // Close on click outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -678,9 +689,9 @@ function StatusDropdown({ value, onChange }: { value: Status; onChange: (s: Stat
 
   return (
     <div ref={ref} style={{ position: "relative", zIndex: open ? 60 : 1 }}>
-      <button onClick={() => setOpen(o => !o)} className={STATUS_BADGE[value]}
+      <button onClick={() => setOpen(o => !o)} className={badges[value]}
         style={{ cursor: "pointer", border: "none", display: "flex", alignItems: "center", gap: 4, padding: "4px 10px" }}>
-        {STATUS_LABELS[value]} <ChevronDown size={10} />
+        {labels[value]} <ChevronDown size={10} />
       </button>
       {open && (
         <div style={{
@@ -689,10 +700,10 @@ function StatusDropdown({ value, onChange }: { value: Status; onChange: (s: Stat
           borderRadius: "var(--r-md)", overflow: "hidden", minWidth: 120,
           boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
         }}>
-          {(Object.keys(STATUS_LABELS) as Status[]).map(s => (
+          {(Object.keys(labels) as Status[]).map(s => (
             <button key={s} onClick={() => { onChange(s); setOpen(false); }}
               style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: s === value ? "var(--bg-hover)" : "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--tx-1)" }}>
-              <span className={STATUS_BADGE[s]}>{STATUS_LABELS[s]}</span>
+              <span className={badges[s]}>{labels[s]}</span>
             </button>
           ))}
         </div>
@@ -701,20 +712,15 @@ function StatusDropdown({ value, onChange }: { value: Status; onChange: (s: Stat
   );
 }
 
-// ── Invoice Tipizat (print-ready) ─────────────────────────────────────────────
-function InvoiceTipizat({ invoice, client, settings, operatingMode }: {
-  invoice: Invoice; client?: Client; settings: MySettings; operatingMode: OperatingMode;
+// ── Invoice Tipizat (print-ready, PFA only) ───────────────────────────────────
+function InvoiceTipizat({ invoice, client, settings }: {
+  invoice: Invoice; client?: Client; settings: MySettings;
 }) {
   const total = invoice.items.reduce((s, it) => s + it.total, 0);
-  const isDDA = operatingMode === "dda";
 
-  const modeLabel = isDDA ? "Drepturi de Autor" : "Persoană Fizică Autorizată (PFA)";
-  const tvaArticle = isDDA
-    ? "art. 292 alin. (1) lit. f) din Codul Fiscal — venituri din drepturi de autor"
-    : "art. 310 alin. (1) din Codul Fiscal — regim special de scutire pentru PFA";
-  const fiscalNote = isDDA
-    ? "Venituri din drepturi de autor. Impozitul pe venit (10%) se calculează prin aplicarea cotei asupra venitului brut minus deducerea forfetară de 40%, conform art. 70-72 din Codul Fiscal."
-    : "Venituri din activități independente (PFA). Impozitul pe venit (10%) se aplică la venitul net (venituri minus cheltuieli deductibile), conform art. 68 din Codul Fiscal.";
+  const modeLabel = "Persoană Fizică Autorizată (PFA)";
+  const tvaArticle = "art. 310 alin. (1) din Codul Fiscal — regim special de scutire pentru PFA";
+  const fiscalNote = "Venituri din activități independente (PFA). Impozitul pe venit (10%) se aplică la venitul net (venituri minus cheltuieli deductibile), conform art. 68 din Codul Fiscal.";
 
   return (
     <div className="tipizat" style={{

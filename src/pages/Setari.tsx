@@ -25,7 +25,8 @@ const DATA_SECTIONS = [
     fields: [
       { key: "my_address",     label: "Adresă sediu", placeholder: "Str. Exemplu nr. 1, Cluj-Napoca", mono: false },
       { key: "my_function",    label: "Funcție (DDA)", placeholder: "Autor / Designer",              mono: false },
-      { key: "invoice_series", label: "Serie factură", placeholder: "FA",                              mono: true  },
+      { key: "invoice_series", label: "Serie factură (PFA)", placeholder: "FA",                       mono: true  },
+      { key: "pvr_series",     label: "Serie PVR (DDA)",     placeholder: "PV",                       mono: true  },
     ],
   },
   {

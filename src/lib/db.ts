@@ -179,7 +179,9 @@ async function initSchema(db: Database) {
       ('invoice_series', 'FA'),
       ('invoice_counter', '1'),
       ('quote_series', 'OF'),
-      ('quote_counter', '1')
+      ('quote_counter', '1'),
+      ('pvr_series', 'PV'),
+      ('pvr_counter', '1')
   `);
 
   // ── Sincronizare Catalog Servicii Ofertare ──────────────────────────────────
@@ -382,15 +384,15 @@ export async function bumpQuoteCounter(): Promise<void> {
  * Generare ATOMICĂ de număr document (pentru a evita race conditions la Salvare).
  * Această funcție trebuie apelată chiar înainte de INSERT.
  */
-export async function getAndBumpNumber(type: "invoice" | "quote"): Promise<string> {
+export async function getAndBumpNumber(type: "invoice" | "quote" | "pvr"): Promise<string> {
   const db = await getDb();
-  const seriesKey = type === "invoice" ? "invoice_series" : "quote_series";
-  const counterKey = type === "invoice" ? "invoice_counter" : "quote_counter";
+  const seriesKey = type === "invoice" ? "invoice_series" : type === "pvr" ? "pvr_series" : "quote_series";
+  const counterKey = type === "invoice" ? "invoice_counter" : type === "pvr" ? "pvr_counter" : "quote_counter";
 
   // Începem o tranzacție pentru a bloca orice altă scriere concurentă pe tabelul settings
   await db.execute("BEGIN TRANSACTION");
   try {
-    const series = (await getSetting(seriesKey)) || (type === "invoice" ? "FA" : "OF");
+    const series = (await getSetting(seriesKey)) || (type === "invoice" ? "FA" : type === "pvr" ? "PV" : "OF");
     const [row] = await db.select<{ value: string }[]>("SELECT value FROM settings WHERE key=?", [counterKey]);
     const current = parseInt(row?.value || "1", 10);
     
