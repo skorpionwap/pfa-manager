@@ -6,7 +6,7 @@ import { Plus, X, Trash2, FileSignature,
 import LexicalEditor from "@/components/LexicalEditor";
 import { getDb, getSettings, isTauri, getSetting } from "@/lib/db";
 import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
-import { pickAndAnalyzeContract, analyzeClientContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
+import { pickAndAnalyzeContract, analyzeClientContract, ContractAnalysis } from "@/lib/gemini";
 import { useToast } from "@/components/Toast";
 import type { Client, Contract, OperatingMode, Quote } from "@/types";
 import { TEMPLATE_HTML, substituteVars, generateTranseTable } from "@/lib/templates";
@@ -38,11 +38,7 @@ const STATUS_LABELS: Record<ContractStatus, string> = {
   pending: "spre aprobare",
 };
 
-const RISK_STYLE: Record<ContractRisk["nivel"], { border: string; label: string }> = {
-  ridicat: { border: "#ef4444", label: "badge badge-red" },
-  mediu:   { border: "#f59e0b", label: "badge badge-amber" },
-  scăzut:  { border: "#22c55e", label: "badge badge-green" },
-};
+
 
 // ── Template options ──────────────────────────────────────────────────────────
 interface TransaConfig { label: string; procent: number; }
@@ -111,7 +107,7 @@ export default function Contracte() {
     type?: "danger" | "primary" | "success";
     onConfirm: () => void; 
   } | null>(null);
-  const [quotes, setQuotes] = useState<Quote[]>([]);
+
   const [quoteId, setQuoteId] = useState<number | "">("");
 
   const load = async () => {
@@ -128,12 +124,7 @@ export default function Contracte() {
     setContracts(rows);
     setClients(await db.select<Client[]>("SELECT * FROM clients ORDER BY name ASC"));
     
-    const rowsQuotes = await db.select<Quote[]>("SELECT * FROM quotes WHERE status = 'accepted' ORDER BY created_at DESC");
-    setQuotes(rowsQuotes.map(r => ({
-      ...r,
-      items: typeof r.items === "string" ? JSON.parse(r.items || "[]") : (r.items || []),
-      subscription_items: typeof r.subscription_items === "string" ? JSON.parse(r.subscription_items || "[]") : (r.subscription_items || [])
-    })));
+
 
     // Get mode to set default template
     const m = (await getSetting("operating_mode")) as OperatingMode || "dda";
@@ -238,7 +229,7 @@ export default function Contracte() {
       EXCLUSIVITATE:    opts.exclusivitate,
       DESCRIERE_OPERA:  opts.descriere_opera || formData.description || "—",
 
-      RESPONSABIL_TAXE: mode === "dda"
+      RESPONSABIL_TAXE: type === "cesiune" || type === "cesiune_abonament"
         ? "Cesionarul va reține și vira la bugetul de stat impozitul pe venit de 10%, în numele Cedentului"
         : "Prestatorul este responsabil cu declararea și plata impozitului pe venit și a contribuțiilor sociale",
       
@@ -539,7 +530,6 @@ export default function Contracte() {
                 {templateOpts.descriere_opera && (
                    <TemplateOptionsPanel 
                      opts={templateOpts} 
-                     type={form.type}
                      onRegenerate={() => applyTemplate(form.type, form.client_id, form, templateOpts)}
                      onChange={setTemplateOpts} 
                    />
@@ -633,7 +623,7 @@ export default function Contracte() {
   );
 }
 
-function TemplateOptionsPanel({ opts, onChange, type, onRegenerate }: { opts: TemplateOptions, onChange: (o: TemplateOptions) => void, type: ContractType, onRegenerate: () => void }) {
+function TemplateOptionsPanel({ opts, onChange, onRegenerate }: { opts: TemplateOptions, onChange: (o: TemplateOptions) => void, onRegenerate: () => void }) {
   const f11: React.CSSProperties = { fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: "var(--tx-3)", marginBottom: 4 };
   return (
     <div style={{ padding: 16, background: "var(--bg-1)", borderBottom: "1px solid var(--border)" }}>

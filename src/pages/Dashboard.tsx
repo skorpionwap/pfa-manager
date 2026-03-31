@@ -63,7 +63,7 @@ export default function Dashboard() {
       const raw = await getFiscalOverrides(currentYear);
       setOverrides(parseFiscalOverrides(raw, currentYear));
 
-      const [c] = await db.select<[{ count: number }]>("SELECT COUNT(*) as count FROM clients");
+      const [c] = await db.select<[{ count: number }]>("SELECT COUNT(*) as count FROM clients WHERE is_archived = 0");
       const [inv] = await db.select<[{ count: number; total: number }]>(
         "SELECT COUNT(*) as count, COALESCE(SUM(total),0) as total FROM invoices WHERE status='paid' AND date LIKE ?",
         [`${month}%`],
