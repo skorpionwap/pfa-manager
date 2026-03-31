@@ -114,11 +114,11 @@ export default function Contracte() {
   const load = async () => {
     const db = await getDb();
     const rows = await db.select<(Contract & { client_name: string; invoiced_amount: number })[]>(`
-      SELECT 
-        c.*, 
+      SELECT
+        c.*,
         cl.name as client_name,
         (SELECT IFNULL(SUM(total), 0) FROM invoices WHERE contract_id = c.id) as invoiced_amount
-      FROM contracts c 
+      FROM contracts c
       LEFT JOIN clients cl ON cl.id = c.client_id
       ORDER BY c.created_at DESC
     `);
@@ -258,7 +258,7 @@ export default function Contracte() {
 
   const openEdit = (c: Contract) => {
     setEditing(c);
-    setQuoteId("");
+    setQuoteId(c.quote_id || "");
     setForm({
       client_id: c.client_id, type: c.type, number: c.number, date: c.date,
       description: "", amount: c.amount, status: c.status, notes: c.notes,
@@ -371,13 +371,13 @@ export default function Contracte() {
 
     if (editing) {
       await db.execute(
-        "UPDATE contracts SET client_id=?,type=?,number=?,date=?,description=?,amount=?,status=?,notes=?,source=?,file_path=? WHERE id=?",
-        [form.client_id, form.type, form.number, form.date, description, form.amount, form.status, form.notes, src, fp, editing.id]
+        "UPDATE contracts SET client_id=?,type=?,number=?,date=?,description=?,amount=?,status=?,notes=?,source=?,file_path=?,quote_id=? WHERE id=?",
+        [form.client_id, form.type, form.number, form.date, description, form.amount, form.status, form.notes, src, fp, quoteId || null, editing.id]
       );
     } else {
       await db.execute(
-        "INSERT INTO contracts(client_id,type,number,date,description,amount,status,notes,source,file_path) VALUES(?,?,?,?,?,?,?,?,?,?)",
-        [form.client_id, form.type, form.number, form.date, description, form.amount, form.status, form.notes, src, fp]
+        "INSERT INTO contracts(client_id,type,number,date,description,amount,status,notes,source,file_path,quote_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        [form.client_id, form.type, form.number, form.date, description, form.amount, form.status, form.notes, src, fp, quoteId || null]
       );
       
       // Dacă am plecat de la o ofertă, o marcăm ca transformată
@@ -487,6 +487,11 @@ export default function Contracte() {
                 <td>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tx-1)", fontWeight: 500 }}>{c.number || `#${c.id}`}</span>
                   <span style={{ display: "block", fontSize: 11, color: "var(--tx-3)", fontFamily: "var(--font-mono)" }}>{c.date}</span>
+                  {c.quote_id && (
+                    <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, color: "var(--ac)", fontFamily: "var(--font-mono)" }}>
+                      Oferta #{quotes.find(q => q.id === c.quote_id)?.number || c.quote_id}
+                    </span>
+                  )}
                 </td>
                 <td style={{ color: "var(--tx-1)" }}>{c.client_name || <span style={{ color: "var(--tx-4)" }}>—</span>}</td>
                 <td><span className={TYPE_BADGE[c.type]}>{TYPE_LABELS[c.type]}</span></td>
@@ -576,7 +581,7 @@ export default function Contracte() {
 
                 {/* Source toggle */}
                 <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-1)" }}>
-                  <Label style={{ marginBottom: 6 }}>Origine contract</Label>
+                  <Label>Origine contract</Label>
                   <div style={{ display: "flex", gap: 6 }}>
                     {(["mine", "client"] as const).map(s => (
                       <button key={s} type="button"

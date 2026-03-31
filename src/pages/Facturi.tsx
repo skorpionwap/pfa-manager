@@ -55,7 +55,7 @@ export default function Facturi() {
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [settings, setSettings] = useState<MySettings>({
     my_name: "", my_cif: "", my_address: "", my_email: "", my_phone: "",
-    my_bank: "", my_iban: "", invoice_series: "FA",
+    my_bank: "", my_iban: "", invoice_series: "FA", pvr_series: "PV",
   });
   const [operatingMode, setOperatingMode] = useState<OperatingMode>("dda");
   const [showPrint, setShowPrint] = useState(false);

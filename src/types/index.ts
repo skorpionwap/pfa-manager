@@ -51,6 +51,7 @@ export interface Contract {
   description: string;
   amount: number;
   status: "activ" | "expirat" | "reziliat" | "pending";
+  quote_id?: number | null;
   source?: "mine" | "client";
   file_path?: string;
   notes: string;
