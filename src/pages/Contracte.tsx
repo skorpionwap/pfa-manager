@@ -54,6 +54,7 @@ interface TemplateOptions {
   exclusivitate: "exclusiv" | "neexclusiv";
   valoare_abonament: string;     // cesiune_abonament
   luna_start_abonament: string;  // cesiune_abonament
+  descriere_opera: string;       // titlul proiectului
 }
 
 function defaultTemplateOptions(type: ContractType): TemplateOptions {
@@ -67,6 +68,7 @@ function defaultTemplateOptions(type: ContractType): TemplateOptions {
     exclusivitate: "neexclusiv",
     valoare_abonament: "",
     luna_start_abonament: "luna a 3-a de la livrarea finală",
+    descriere_opera: "",
   };
   if (type === "cesiune") return { ...base, preaviz: 15 };
   if (type === "prestari") return {
@@ -152,8 +154,9 @@ export default function Contracte() {
           if (q.has_subscription && q.subscription_price) {
             opts.valoare_abonament = q.subscription_price.toString();
           }
+          opts.descriere_opera = q.title || "";
           
-          setForm(f);
+          setForm({ ...f, description: q.title || "" });
           setTemplateOpts(opts);
           setQuoteId(q.id);
           
@@ -231,6 +234,7 @@ export default function Contracte() {
       TERMEN_PLATA:     String(opts.termen_plata),
       PREAVIZ:          String(opts.preaviz),
       EXCLUSIVITATE:    opts.exclusivitate,
+      DESCRIERE_OPERA:  opts.descriere_opera || formData.description || "—",
 
       RESPONSABIL_TAXE: mode === "dda"
         ? "Cesionarul va reține și vira la bugetul de stat impozitul pe venit de 10%, în numele Cedentului"
@@ -664,6 +668,8 @@ export default function Contracte() {
                                 f.type = mode === "dda" ? (q.has_subscription ? "cesiune_abonament" : "cesiune") : "prestari";
                                 const opts = defaultTemplateOptions(f.type);
                                 if (q.has_subscription && q.subscription_price) opts.valoare_abonament = q.subscription_price.toString();
+                                opts.descriere_opera = q.title || "";
+                                f.description = q.title || "";
                                 setForm(f);
                                 setTemplateOpts(opts);
                                 const vars = await loadVars(f.type, f.client_id, f, opts);
@@ -975,6 +981,18 @@ function TemplateOptionsPanel({
             Regenerează
           </button>
         </div>
+      </div>
+
+      {/* New: Project Description / Subject */}
+      <div style={{ marginBottom: 15 }}>
+        <div style={f11}>Obiectul contractului / Titlu proiect</div>
+        <input
+          className="field"
+          value={opts.descriere_opera}
+          onChange={e => onChange({ ...opts, descriere_opera: e.target.value })}
+          placeholder="ex: Design logo și identitate vizuală"
+          style={{ width: "100%", fontSize: 13, padding: "8px 12px" }}
+        />
       </div>
 
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
