@@ -6,11 +6,31 @@ interface QuoteTipizatProps {
   settings: Settings;
 }
 
+const DEFAULT_TERMS = [
+  { title: "Facturare și Plată", text: "Se va emite o factură de avans (ex: 30-50%) la semnarea contractului, restul urmând a fi facturat conform tranșelor agreate la predarea proiectului." },
+  { title: "Termen de valabilitate", text: "Condițiile financiare din prezenta ofertă sunt valabile până la data de {valid_until}." },
+  { title: "Drepturi de autor", text: "Drepturile patrimoniale de autor asupra codului și design-ului se vor transfera exclusiv Beneficiarului după achitarea integrală a proiectului, conform Legii 8/1996." },
+  { title: "Acceptanță", text: "Semnarea acestei oferte ține loc de acceptare de principiu și declanșează redactarea contractului final." },
+];
+
+function parseTerms(raw: string, validUntil: string): { title: string; text: string }[] {
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+  const parsed = lines.map(line => {
+    const m = line.match(/^\[(.+?)\]\s*(.+)/);
+    if (!m) return null;
+    return { title: m[1], text: m[2].replace(/\{valid_until\}/g, validUntil || "scadență") };
+  }).filter((x): x is { title: string; text: string } => x !== null);
+  return parsed.length > 0 ? parsed : DEFAULT_TERMS.map(t => ({ ...t, text: t.text.replace(/\{valid_until\}/g, validUntil || "scadență") }));
+}
+
 export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatProps) {
   const validItems = (quote.items || []).filter(it => it.description && it.total > 0);
   const validSubItems = (quote.subscription_items || []).filter(it => it.description && it.total > 0);
   const hasSubscription = !!quote.has_subscription && validSubItems.length > 0;
   const an1 = quote.total + (hasSubscription ? quote.subscription_price * 12 : 0);
+  const terms = quote.terms
+    ? parseTerms(quote.terms, quote.valid_until || "")
+    : DEFAULT_TERMS.map(t => ({ ...t, text: t.text.replace(/\{valid_until\}/g, quote.valid_until || "scadență") }));
 
   return (
     <div style={{ color: "#111", fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.5, WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}>
@@ -202,12 +222,14 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
         </h4>
         <div style={{ fontSize: 11, lineHeight: 1.6, color: "#555", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 40px" }}>
           <div>
-            <p style={{ margin: "0 0 8px" }}><strong>1. Facturare și Plată:</strong> Se va emite o factură de avans (ex: 30-50%) la semnarea contractului, restul urmând a fi facturat conform tranșelor agreate la predarea proiectului.</p>
-            <p style={{ margin: "0 0 8px" }}><strong>2. Termen de valabilitate:</strong> Condițiile financiare din prezenta ofertă sunt valabile până la data de <strong>{quote.valid_until || "scadență"}</strong>.</p>
+            {terms.filter((_, i) => i % 2 === 0).map((term, i) => (
+              <p key={i} style={{ margin: "0 0 8px" }}><strong>{i * 2 + 1}. {term.title}:</strong> {term.text}</p>
+            ))}
           </div>
           <div>
-            <p style={{ margin: "0 0 8px" }}><strong>3. Drepturi de autor:</strong> Drepturile patrimoniale de autor asupra codului și design-ului se vor transfera exclusiv Beneficiarului după achitarea integrală a proiectului, conform Legii 8/1996.</p>
-            <p style={{ margin: "0 0 8px" }}><strong>4. Acceptanță:</strong> Semnarea acestei oferte ține loc de acceptare de principiu și declanșează redactarea contractului final.</p>
+            {terms.filter((_, i) => i % 2 === 1).map((term, i) => (
+              <p key={i} style={{ margin: "0 0 8px" }}><strong>{i * 2 + 2}. {term.title}:</strong> {term.text}</p>
+            ))}
           </div>
         </div>
       </div>

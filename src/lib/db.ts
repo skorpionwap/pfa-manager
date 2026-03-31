@@ -76,6 +76,7 @@ async function initSchema(db: Database) {
   try { await db.execute("ALTER TABLE clients ADD COLUMN representative_function TEXT DEFAULT ''"); } catch(e) {}
   try { await db.execute("ALTER TABLE clients ADD COLUMN is_archived INTEGER DEFAULT 0"); } catch(e) {}
   try { await db.execute("ALTER TABLE quotes ADD COLUMN converted_to_id INTEGER DEFAULT NULL"); } catch(e) {}
+  try { await db.execute("ALTER TABLE quotes ADD COLUMN terms TEXT DEFAULT ''"); } catch(e) {}
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS contracts (

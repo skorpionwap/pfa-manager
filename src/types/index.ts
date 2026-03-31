@@ -132,6 +132,7 @@ export interface Quote {
   valid_until: string;
   status: "draft" | "sent" | "accepted" | "rejected" | "expired";
   converted_to_id?: number | null;
+  terms?: string;
   notes: string;
   chat_history?: string;
   created_at: string;

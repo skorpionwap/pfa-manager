@@ -159,6 +159,7 @@ export default function Oferte() {
   const [validUntil, setValidUntil] = useState(addDays(today(), 30));
   const [status, setStatus] = useState<Status>("draft");
   const [notes, setNotes] = useState("");
+  const [terms, setTerms] = useState("");
   
   const [geminiPanelOpen, setGeminiPanelOpen] = useState(false);
   const [aiHistory, setAiHistory] = useState<any[]>([]);
@@ -198,6 +199,7 @@ export default function Oferte() {
           if (config.subscription_months) setSubscriptionMonths(config.subscription_months);
         }
         if (config.notes) setNotes(prev => prev ? prev + "\n\n" + config.notes : config.notes);
+        if (config.terms) setTerms(config.terms);
         toast("Configurație AI aplicată!", "success");
       } else if (text) {
         setNotes(prev => prev ? prev + "\n\n" + text : text);
@@ -291,6 +293,7 @@ export default function Oferte() {
     setValidUntil(addDays(today(), 30));
     setStatus("draft");
     setNotes("");
+    setTerms("");
     setAiHistory([]);
     
     setShowForm(true);
@@ -314,6 +317,7 @@ export default function Oferte() {
     setValidUntil(q.valid_until || addDays(today(), 30));
     setStatus(q.status);
     setNotes(q.notes || "");
+    setTerms(q.terms || "");
     try {
       setAiHistory(JSON.parse(q.chat_history || "[]"));
     } catch {
@@ -346,14 +350,14 @@ export default function Oferte() {
         UPDATE quotes SET 
           client_id=?, title=?, project_type=?, page_count=?, items=?, 
           subscription_items=?, subscription_price=?, subscription_months=?, subscription_start_date=?, has_subscription=?,
-          subtotal=?, discount_percent=?, discount_amount=?, total=?, 
-          delivery_days=?, valid_until=?, status=?, notes=?, chat_history=?
+          subtotal=?, discount_percent=?, discount_amount=?, total=?,
+          delivery_days=?, valid_until=?, status=?, notes=?, terms=?, chat_history=?
         WHERE id=?`,
         [
           clientId, title, projectType, pageCount, JSON.stringify(items),
           JSON.stringify(subscriptionItems), subP, subscriptionMonths, subscriptionStartDate, hasSubscription ? 1 : 0,
           st, discountPercent, discAmt, tot,
-          deliveryDays, validUntil, status, notes, JSON.stringify(aiHistory),
+          deliveryDays, validUntil, status, notes, terms, JSON.stringify(aiHistory),
           editing.id
         ]
       );
@@ -364,13 +368,13 @@ export default function Oferte() {
           number, client_id, title, project_type, page_count, items,
           subscription_items, subscription_price, subscription_months, subscription_start_date, has_subscription,
           subtotal, discount_percent, discount_amount, total,
-          delivery_days, valid_until, status, notes, chat_history
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          delivery_days, valid_until, status, notes, terms, chat_history
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           number, clientId, title, projectType, pageCount, JSON.stringify(items),
           JSON.stringify(subscriptionItems), subP, subscriptionMonths, subscriptionStartDate, hasSubscription ? 1 : 0,
           st, discountPercent, discAmt, tot,
-          deliveryDays, validUntil, status, notes, JSON.stringify(aiHistory)
+          deliveryDays, validUntil, status, notes, terms, JSON.stringify(aiHistory)
         ]
       );
     }
@@ -530,9 +534,11 @@ Structură așteptată pentru blocul JSON:
   "has_subscription": true sau false,
   "subscription_items": [{ array similar ca "items" de sus, dar alege doar elemente "Recurent" din catalog }],
   "subscription_months": 12,
-  "notes": "Note / Termeni garanție profesioniști."
+  "notes": "Note / Termeni garanție profesioniști.",
+  "terms": "[Facturare și Plată] Text specific acestui client.\n[Termen de valabilitate] Condițiile sunt valabile până la {valid_until}.\n[Drepturi de autor] Text specific proiectului.\n[Acceptanță] Text specific."
 }
 </config>
+Câmpul "terms" este OPȚIONAL — include-l doar dacă vrei să propui termeni personalizați pentru acest client/proiect. Dacă lipsește, rămân termenii actuali.
 
 OFERTĂ CURENTĂ (așa cum o are setată utilizatorul momentan în interfață):
 - Client: ${client?.name || "nespecificat"}
@@ -548,7 +554,8 @@ ${serviceList}
 ${discountPercent > 0 ? `- Discount: ${discountPercent}% (−${calcDiscount(calcSubtotal())} RON)` : ""}
 - TOTAL PROIECT: ${calcTotal()} RON
 ${subList ? `\nABONAMENT LUNAR CURENT SETAT (MENTENANȚĂ):\n${subList}\n- Total lunar: ${calcSubPrice()} RON/lună\n- Perioadă minimă: ${subscriptionMonths} luni\n- Start: ${subscriptionStartDate}` : "- Fără plan de abonament"}
-${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
+${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}
+${terms ? `\n\nTERMENI COMERCIALI ACTUALI AI ACESTEI OFERTE:\n${terms}` : "\n\nTERMENI COMERCIALI: (necompletați — vor fi afișați termenii impliciți)"}`;
   };
 
   const convertToFinancialDoc = async (q: Quote) => {
@@ -948,6 +955,23 @@ ${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
               <div>
                 <FieldLabel>Note, Garanții și Condiții parteneriat</FieldLabel>
                 <textarea className="field" rows={8} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Scrie aici notele tale sau cere ajutorul Gemini..." style={{ resize: "vertical", minHeight: 180 }} />
+              </div>
+
+              {/* Termeni comerciali */}
+              <div>
+                <FieldLabel>Termeni Comerciali și de Achiziție</FieldLabel>
+                <textarea
+                  className="field"
+                  rows={6}
+                  value={terms}
+                  onChange={e => setTerms(e.target.value)}
+                  placeholder={`[Facturare și Plată] Se va emite o factură de avans (ex: 30-50%) la semnarea contractului...\n[Termen de valabilitate] Condițiile financiare sunt valabile până la {valid_until}.\n[Drepturi de autor] Drepturile patrimoniale se transferă după achitarea integrală...\n[Acceptanță] Semnarea ofertei ține loc de acceptare de principiu.`}
+                  style={{ resize: "vertical", fontFamily: "var(--font-mono)", fontSize: 12, lineHeight: 1.7 }}
+                />
+                <div style={{ fontSize: 11, color: "var(--tx-4)", marginTop: 4 }}>
+                  Un termen per linie: <code style={{ fontFamily: "var(--font-mono)", background: "var(--bg-2)", padding: "1px 4px", borderRadius: 3 }}>[Titlu] Text.</code>
+                  &nbsp;Folosește <code style={{ fontFamily: "var(--font-mono)", background: "var(--bg-2)", padding: "1px 4px", borderRadius: 3 }}>{"{valid_until}"}</code> pentru data valabilitate. Dacă e gol, se afișează termenii impliciți.
+                </div>
               </div>
 
             </div>
