@@ -73,11 +73,13 @@ export interface Expense {
 export interface Settings {
   my_name: string;
   my_cif: string;
+  my_reg_com?: string;
   my_address: string;
   my_bank: string;
   my_iban: string;
   my_email: string;
   my_phone: string;
+  my_function?: string;
   invoice_series: string;
   invoice_counter: number;
   operating_mode: OperatingMode;

@@ -387,7 +387,15 @@ export default function Facturi() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <FieldLabel>Client *</FieldLabel>
-                  <select className="field" value={clientId} onChange={e => setClientId(Number(e.target.value) || "")}>
+                  <select className="field" value={clientId} onChange={e => {
+                    const newId = Number(e.target.value) || "";
+                    setClientId(newId);
+                    // Resetează contractul dacă nu aparține noului client
+                    if (contractId) {
+                      const contract = contracts.find(c => c.id === contractId);
+                      if (contract && contract.client_id !== newId) setContractId("");
+                    }
+                  }}>
                     <option value="">Selectează client...</option>
                     {clients.filter(c => !c.is_archived).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>

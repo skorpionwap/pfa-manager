@@ -109,6 +109,7 @@ export default function Contracte() {
   } | null>(null);
 
   const [quoteId, setQuoteId] = useState<number | "">("");
+  const [quotes, setQuotes]   = useState<Quote[]>([]);
 
   const load = async () => {
     const db = await getDb();
@@ -123,8 +124,12 @@ export default function Contracte() {
     `);
     setContracts(rows);
     setClients(await db.select<Client[]>("SELECT * FROM clients ORDER BY name ASC"));
-    
-
+    const rawQuotes = await db.select<Quote[]>("SELECT * FROM quotes WHERE status NOT IN ('rejected') ORDER BY created_at DESC");
+    setQuotes(rawQuotes.map(q => ({
+      ...q,
+      items: typeof q.items === "string" ? JSON.parse(q.items || "[]") : q.items,
+      subscription_items: typeof q.subscription_items === "string" ? JSON.parse(q.subscription_items || "[]") : q.subscription_items,
+    })));
 
     // Get mode to set default template
     const m = (await getSetting("operating_mode")) as OperatingMode || "dda";
@@ -204,6 +209,8 @@ export default function Contracte() {
     return {
       AUTOR_NUME:       s.my_name    || "Numele Dvs.",
       AUTOR_CIF:        s.my_cif     || "RO12345678",
+      AUTOR_CNP:        s.my_cif     || "—",
+      AUTOR_REG_COM:    s.my_reg_com || "—",
       AUTOR_ADRESA:     s.my_address || "Adresa Dvs.",
       AUTOR_EMAIL:      s.my_email   || "email@exemplu.ro",
       AUTOR_IBAN:       s.my_iban    || "RO................",
@@ -232,9 +239,10 @@ export default function Contracte() {
       RESPONSABIL_TAXE: type === "cesiune" || type === "cesiune_abonament"
         ? "Cesionarul va reține și vira la bugetul de stat impozitul pe venit de 10%, în numele Cedentului"
         : "Prestatorul este responsabil cu declararea și plata impozitului pe venit și a contribuțiilor sociale",
-      
+
       VALOARE_ABONAMENT: opts.valoare_abonament ? Number(opts.valoare_abonament).toLocaleString("ro-RO", { minimumFractionDigits: 2 }) : "—",
-      START_ABONAMENT: opts.luna_start_abonament || "—",
+      LUNA_START_ABONAMENT: opts.luna_start_abonament || "—",
+      START_ABONAMENT:      opts.luna_start_abonament || "—",
     };
   };
 
@@ -259,6 +267,39 @@ export default function Contracte() {
     setTemplateOpts(defaultTemplateOptions(c.type));
     setEditorContent(c.description || "");
     setShowForm(true);
+  };
+
+  const applyQuote = async (q: Quote) => {
+    const parsedItems = Array.isArray(q.items) ? q.items : JSON.parse((q.items as unknown as string) || "[]");
+    const parsedSubItems = Array.isArray(q.subscription_items) ? q.subscription_items : JSON.parse((q.subscription_items as unknown as string) || "[]");
+
+    const type: ContractType = mode === "dda"
+      ? (q.has_subscription ? "cesiune_abonament" : "cesiune")
+      : "prestari";
+
+    const opts = defaultTemplateOptions(type);
+    if (q.has_subscription && q.subscription_price) opts.valoare_abonament = q.subscription_price.toString();
+    opts.descriere_opera = q.title || "";
+
+    const nextForm = { ...form, client_id: q.client_id, amount: q.total, type, description: q.title || "" };
+    setForm(nextForm);
+    setTemplateOpts(opts);
+    setQuoteId(q.id);
+
+    const vars = await loadVars(type, q.client_id, nextForm, opts);
+    let html = substituteVars(TEMPLATE_HTML[type] ?? "", vars);
+
+    if (parsedItems.length > 0) {
+      const itemsHtml = parsedItems.filter((it: any) => it.description)
+        .map((it: any) => `<li>${it.description} — <strong>${it.total.toLocaleString()} RON</strong></li>`).join("");
+      const subItemsHtml = q.has_subscription && parsedSubItems.length > 0
+        ? parsedSubItems.filter((it: any) => it.description)
+            .map((it: any) => `<li>${it.description} — <strong>${it.unit_price.toLocaleString()} RON / lună</strong></li>`).join("")
+        : "";
+      html += `<br/><br/><h4>Anexa 1 - Servicii (conform Ofertei #${q.number})</h4><ul>${itemsHtml}</ul>`;
+      if (subItemsHtml) html += `<h4>Anexa 2 - Abonament / Mentenanță</h4><ul>${subItemsHtml}</ul>`;
+    }
+    setEditorContent(html);
   };
 
   const pickClientFile = async () => {
@@ -527,11 +568,11 @@ export default function Contracte() {
             <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
               {/* Left: Editor */}
               <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "white", overflowY: "auto" }}>
-                {templateOpts.descriere_opera && (
-                   <TemplateOptionsPanel 
-                     opts={templateOpts} 
+                {form.source !== "client" && (
+                   <TemplateOptionsPanel
+                     opts={templateOpts}
                      onRegenerate={() => applyTemplate(form.type, form.client_id, form, templateOpts)}
-                     onChange={setTemplateOpts} 
+                     onChange={setTemplateOpts}
                    />
                 )}
                 <div style={{ flex: 1, padding: 24 }}>
@@ -544,11 +585,39 @@ export default function Contracte() {
                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     <div>
                       <Label>Client</Label>
-                      <select className="field" value={form.client_id || ""} onChange={e => setForm({...form, client_id: Number(e.target.value) || null})}>
+                      <select className="field" value={form.client_id || ""} onChange={e => {
+                        const newClientId = Number(e.target.value) || null;
+                        setForm(f => ({ ...f, client_id: newClientId }));
+                        if (quoteId) {
+                          const q = quotes.find(q => q.id === quoteId);
+                          if (q && q.client_id !== newClientId) setQuoteId("");
+                        }
+                      }}>
                         <option value="">Alege client...</option>
                         {clients.filter(cl => !cl.is_archived).map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
                       </select>
                     </div>
+                    {!editing && (
+                      <div>
+                        <Label>Ofertă asociată</Label>
+                        <select className="field" value={quoteId} onChange={async e => {
+                          const qid = Number(e.target.value) || "";
+                          if (!qid) { setQuoteId(""); return; }
+                          const q = quotes.find(q => q.id === qid);
+                          if (q) await applyQuote(q);
+                        }}>
+                          <option value="">Fără ofertă / completare manuală...</option>
+                          {quotes
+                            .filter(q => !form.client_id || q.client_id === form.client_id)
+                            .filter(q => !q.converted_to_id)
+                            .map(q => (
+                              <option key={q.id} value={q.id}>
+                                {q.number} — {q.title} ({q.total.toLocaleString()} RON)
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
                     <div>
                       <Label>Tip contract</Label>
                       <select className="field" value={form.type} onChange={e => {
