@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import ConfirmModal from "@/components/ConfirmModal";
-import { Plus, Search, Pencil, Trash2, X, Check, UserCircle2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Check, UserCircle2, Archive } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import type { Client } from "@/types";
 
-const empty = (): Omit<Client, "id" | "created_at"> => ({
+const empty = (): Omit<Client, "id" | "created_at" | "is_archived"> => ({
   name: "", cif: "", reg_com: "", address: "", email: "", phone: "", contact_person: "",
   bank: "", iban: "", legal_representative: "", representative_function: ""
 });
@@ -31,7 +31,14 @@ export default function Clienti() {
   const [form, setForm]         = useState(empty());
   const searchRef               = useRef<HTMLInputElement>(null);
   const { toast }               = useToast();
-  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ 
+    message: string; 
+    title?: string;
+    confirmLabel?: string;
+    type?: "danger" | "primary" | "success";
+    onConfirm: () => void; 
+  } | null>(null);
 
   const load = async () => {
     const db = await getDb();
@@ -71,34 +78,42 @@ export default function Clienti() {
 
   const remove = async (id: number) => {
     const db = await getDb();
-    const [{ inv }] = await db.select<[{ inv: number }]>(
-      "SELECT COUNT(*) as inv FROM invoices WHERE client_id=?", [id]
-    );
-    const [{ ctr }] = await db.select<[{ ctr: number }]>(
-      "SELECT COUNT(*) as ctr FROM contracts WHERE client_id=?", [id]
-    );
-    const deps: string[] = [];
-    if (inv > 0) deps.push(`${inv} factur${inv === 1 ? "ă" : "i"}`);
-    if (ctr > 0) deps.push(`${ctr} contract${ctr === 1 ? "" : "e"}`);
-    const warning = deps.length
-      ? `\n\nATENȚIE: clientul are ${deps.join(" și ")} asociate care vor rămâne fără client!`
-      : "";
+    const [{ inv }] = await db.select<{ inv: number }[]>("SELECT COUNT(*) as inv FROM invoices WHERE client_id=?", [id]);
+    const [{ ctr }] = await db.select<{ ctr: number }[]>("SELECT COUNT(*) as ctr FROM contracts WHERE client_id=?", [id]);
+    const [{ qto }] = await db.select<{ qto: number }[]>("SELECT COUNT(*) as qto FROM quotes WHERE client_id=?", [id]);
+    
+    const hasDocs = (inv || 0) + (ctr || 0) + (qto || 0) > 0;
+
     setConfirmModal({
-      message: `Ștergi clientul?${warning}`,
+      title: hasDocs ? "Arhivare Client" : "Ștergere Client",
+      message: hasDocs 
+        ? "Acest client are documente asociate. Pentru a păstra integritatea datelor, va fi arhivat (nu va mai apărea în selecții dar istoricul rămâne)."
+        : "Ștergi clientul? Această acțiune nu poate fi anulată.",
+      confirmLabel: hasDocs ? "Arhivează" : "Șterge",
+      type: "danger",
       onConfirm: async () => {
         setConfirmModal(null);
-        await db.execute("DELETE FROM clients WHERE id=?", [id]);
+        if (hasDocs) {
+          await db.execute("UPDATE clients SET is_archived=1 WHERE id=?", [id]);
+          toast("Client arhivat", "info");
+        } else {
+          await db.execute("DELETE FROM clients WHERE id=?", [id]);
+          toast("Client șters", "info");
+        }
         load();
-        toast("Client șters", "info");
-      },
+      }
     });
   };
 
-  const filtered = clients.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.cif.includes(search) ||
-    c.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = clients.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.reg_com?.toLowerCase().includes(search.toLowerCase()) ||
+      c.cif.includes(search) ||
+      c.email.toLowerCase().includes(search.toLowerCase());
+    
+    if (showArchived) return matchesSearch;
+    return !c.is_archived && matchesSearch;
+  });
 
   const initials = (name: string) => name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
@@ -118,17 +133,23 @@ export default function Clienti() {
         </button>
       </div>
 
-      {/* Search bar */}
-      <div style={{ position: "relative", marginBottom: 16, maxWidth: 400 }}>
-        <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--tx-3)", pointerEvents: "none" }} />
-        <input
-          ref={searchRef}
-          className="field"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Caută după nume, CIF, email..."
-          style={{ paddingLeft: 32 }}
-        />
+      {/* Search bar & Toggle */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ position: "relative", maxWidth: 400, flex: 1 }}>
+          <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--tx-3)", pointerEvents: "none" }} />
+          <input
+            ref={searchRef}
+            className="field"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Caută după nume, CIF, email..."
+            style={{ paddingLeft: 32 }}
+          />
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--tx-3)" }}>
+          <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
+          Arată arhivați
+        </label>
       </div>
 
       {/* Table */}
@@ -149,23 +170,29 @@ export default function Clienti() {
               <tr>
                 <td colSpan={6} style={{ textAlign: "center", padding: "60px 0", color: "var(--tx-4)" }}>
                   <UserCircle2 size={32} style={{ margin: "0 auto 12px", display: "block", opacity: 0.3 }} />
-                  {search ? `Niciun rezultat pentru „${search}"` : "Niciun client adăugat încă"}
+                  {search ? `Niciun rezultat pentru „${search}"` : "Niciun client activ găsit"}
                 </td>
               </tr>
             ) : filtered.map(c => (
-              <tr key={c.id}>
+              <tr key={c.id} style={{ opacity: c.is_archived ? 0.6 : 1, background: c.is_archived ? "var(--bg-1)" : "none" }}>
                 <td style={{ paddingRight: 0 }}>
                   <div style={{
                     width: 30, height: 30, borderRadius: "var(--r-md)",
-                    background: "var(--bg-3)", border: "1px solid var(--border)",
+                    background: c.is_archived ? "var(--bg-2)" : "var(--bg-3)", 
+                    border: "1px solid var(--border)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 600, color: "var(--ac)",
+                    fontSize: 11, fontWeight: 600, color: c.is_archived ? "var(--tx-4)" : "var(--ac)",
                     fontFamily: "var(--font-head)",
+                    position: "relative"
                   }}>
-                    {c.name ? initials(c.name) : "?"}
+                    {initials(c.name)}
+                    {c.is_archived && <div style={{ position: "absolute", bottom: -4, right: -4, background: "var(--bg-base)", borderRadius: "50%", padding: 1 }}><Archive size={10} color="var(--tx-4)" /></div>}
                   </div>
                 </td>
-                <td style={{ color: "var(--tx-1)", fontWeight: 500 }}>{c.name}</td>
+                <td style={{ color: "var(--tx-1)", fontWeight: 500 }}>
+                  {c.name}
+                  {c.is_archived && <span className="badge badge-muted" style={{ fontSize: 9, marginLeft: 8 }}>ARHIVAT</span>}
+                </td>
                 <td>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--tx-3)", display: "block" }}>{c.cif || "—"}</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--tx-4)", display: "block" }}>{c.reg_com}</span>
@@ -248,6 +275,9 @@ export default function Clienti() {
       {confirmModal && (
         <ConfirmModal
           message={confirmModal.message}
+          title={confirmModal.title}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />

@@ -11,6 +11,7 @@ export interface Client {
   iban?: string;
   legal_representative?: string; // e.g. Ion Popescu
   representative_function?: string; // e.g. Administrator
+  is_archived?: boolean;
   created_at: string;
 }
 
@@ -128,6 +129,7 @@ export interface Quote {
   delivery_days: number;
   valid_until: string;
   status: "draft" | "sent" | "accepted" | "rejected" | "expired";
+  converted_to_id?: number | null;
   notes: string;
   chat_history?: string;
   created_at: string;

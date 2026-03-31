@@ -249,6 +249,14 @@ export async function getSetting(key: string): Promise<string> {
   return rows[0]?.value ?? "";
 }
 
+export async function getSettings(): Promise<Record<string, string>> {
+  const db = await getDb();
+  const rows = await db.select<{ key: string, value: string }[]>("SELECT key, value FROM settings");
+  const s: Record<string, string> = {};
+  rows.forEach(r => s[r.key] = r.value);
+  return s;
+}
+
 export async function setSetting(key: string, value: string): Promise<void> {
   const db = await getDb();
   await db.execute(

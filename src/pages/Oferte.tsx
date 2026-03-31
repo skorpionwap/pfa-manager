@@ -660,7 +660,14 @@ ${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
                 <td style={{ color: "var(--tx-1)", fontWeight: 500 }}>{q.client_name || "—"}</td>
                 <td>
                   <div style={{ display: "flex", flexDirection: "column" }}>
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{q.title || "Proiect fără titlu"}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{q.title || "Proiect fără titlu"}</span>
+                      {q.converted_to_id && (
+                        <span className="badge badge-green" style={{ fontSize: 9, padding: "2px 6px" }}>
+                          CONVERTIT #{(q as any).converted_to_id}
+                        </span>
+                      )}
+                    </div>
                     <span style={{ fontSize: 11, color: "var(--tx-3)" }}>{q.project_type}</span>
                   </div>
                 </td>
@@ -837,7 +844,7 @@ ${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
                   <FieldLabel>Client</FieldLabel>
                   <select className="field" value={clientId} onChange={e => setClientId(Number(e.target.value) || "")}>
                     <option value="">Selectează client...</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {clients.filter(c => !c.is_archived).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div style={{ gridColumn: "span 3" }}>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import ConfirmModal from "@/components/ConfirmModal";
 import { Plus, X, Check, Trash2, ChevronDown, FileText, Printer, Eye, Upload, Loader2 } from "lucide-react";
-import { getDb, peekInvoiceNumber, bumpInvoiceCounter, isTauri } from "@/lib/db";
+import { getDb, isTauri, getAndBumpNumber } from "@/lib/db";
 import { useToast } from "@/components/Toast";
 import type { Client, Invoice, InvoiceItem, OperatingMode } from "@/types";
 import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
@@ -51,7 +51,13 @@ export default function Facturi() {
   const [operatingMode, setOperatingMode] = useState<OperatingMode>("dda");
   const [showPrint, setShowPrint] = useState(false);
   const [contracts, setContracts] = useState<any[]>([]); // Added for contract linking
-  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ 
+    message: string; 
+    title?: string;
+    confirmLabel?: string;
+    type?: "danger" | "primary" | "success";
+    onConfirm: () => void; 
+  } | null>(null);
 
   // Form state
   const [clientId, setClientId] = useState<number | "">("");
@@ -185,12 +191,11 @@ export default function Facturi() {
         [clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0, source, filePath, editing.id]
       );
     } else {
-      const number = await peekInvoiceNumber();
+      const number = await getAndBumpNumber("invoice");
       await db.execute(
         "INSERT INTO invoices(number,client_id,contract_id,date,due_date,items,total,status,notes,category,is_signed,source,file_path) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [number, clientId, contractId || null, date, dueDate, JSON.stringify(items), total, status, notes, category, isSigned ? 1 : 0, source, filePath]
       );
-      await bumpInvoiceCounter();
     }
     setShowForm(false);
     load();
@@ -200,13 +205,16 @@ export default function Facturi() {
 
   const remove = (id: number) => {
     setConfirmModal({
-      message: "Ștergi factura? Această acțiune nu poate fi anulată.",
+      title: "Ștergere Document",
+      message: "Ești sigur că vrei să ștergi acest document? Această acțiune nu poate fi anulată.",
+      confirmLabel: "Șterge",
+      type: "danger",
       onConfirm: async () => {
         setConfirmModal(null);
         const db = await getDb();
         await db.execute("DELETE FROM invoices WHERE id=?", [id]);
         load();
-        toast("Factura ștearsă", "info");
+        toast("Document șters", "info");
       },
     });
   };
@@ -381,7 +389,7 @@ export default function Facturi() {
                   <FieldLabel>Client *</FieldLabel>
                   <select className="field" value={clientId} onChange={e => setClientId(Number(e.target.value) || "")}>
                     <option value="">Selectează client...</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {clients.filter(c => !c.is_archived).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -626,6 +634,9 @@ export default function Facturi() {
       {confirmModal && (
         <ConfirmModal
           message={confirmModal.message}
+          title={confirmModal.title}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
