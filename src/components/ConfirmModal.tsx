@@ -1,12 +1,24 @@
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Check, FileText } from "lucide-react";
 
 interface ConfirmModalProps {
   message: string;
+  title?: string;
+  confirmLabel?: string;
+  type?: "danger" | "primary" | "success";
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export default function ConfirmModal({ message, onConfirm, onCancel }: ConfirmModalProps) {
+export default function ConfirmModal({ 
+  message, title = "Confirmare ștergere", confirmLabel = "Șterge", type = "danger", onConfirm, onCancel 
+}: ConfirmModalProps) {
+  const isDanger = type === "danger";
+  const isSuccess = type === "success";
+  
+  const color = isDanger ? "#ef4444" : isSuccess ? "#22c55e" : "var(--ac)";
+  const bg = isDanger ? "rgba(239,68,68,0.15)" : isSuccess ? "rgba(34,197,94,0.15)" : "var(--ac-dim)";
+  const Icon = isDanger ? Trash2 : isSuccess ? Check : FileText;
+
   return (
     <div
       style={{
@@ -27,13 +39,13 @@ export default function ConfirmModal({ message, onConfirm, onCancel }: ConfirmMo
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{
-            background: "rgba(239,68,68,0.15)", borderRadius: 8,
-            padding: 8, display: "flex", color: "#ef4444",
+            background: bg, borderRadius: 8,
+            padding: 8, display: "flex", color: color,
           }}>
-            <Trash2 size={18} />
+            <Icon size={18} />
           </span>
           <span style={{ color: "var(--tx-1)", fontWeight: 600, fontSize: 15 }}>
-            Confirmare ștergere
+            {title}
           </span>
         </div>
 
@@ -53,12 +65,12 @@ export default function ConfirmModal({ message, onConfirm, onCancel }: ConfirmMo
             onClick={onConfirm}
             style={{
               display: "flex", alignItems: "center", gap: 6,
-              background: "#ef4444", color: "#fff", border: "none",
+              background: color, color: "#fff", border: "none",
               borderRadius: 6, padding: "6px 14px", cursor: "pointer",
               fontSize: 13, fontWeight: 500,
             }}
           >
-            <Trash2 size={14} /> Șterge
+            <Icon size={14} /> {confirmLabel}
           </button>
         </div>
       </div>

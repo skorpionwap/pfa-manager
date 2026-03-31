@@ -105,7 +105,13 @@ export default function Contracte() {
   const [editorContent, setEditorContent] = useState("");
   const [viewContract, setViewContract] = useState<Contract | null>(null);
   const [printHtml, setPrintHtml] = useState<string | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ 
+    message: string; 
+    title?: string;
+    confirmLabel?: string;
+    type?: "danger" | "primary" | "success";
+    onConfirm: () => void; 
+  } | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [quoteId, setQuoteId] = useState<number | "">("");
 
@@ -920,6 +926,9 @@ export default function Contracte() {
       {confirmModal && (
         <ConfirmModal
           message={confirmModal.message}
+          title={confirmModal.title}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />

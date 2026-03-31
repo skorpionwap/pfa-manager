@@ -74,6 +74,8 @@ async function initSchema(db: Database) {
   try { await db.execute("ALTER TABLE clients ADD COLUMN iban TEXT DEFAULT ''"); } catch(e) {}
   try { await db.execute("ALTER TABLE clients ADD COLUMN legal_representative TEXT DEFAULT ''"); } catch(e) {}
   try { await db.execute("ALTER TABLE clients ADD COLUMN representative_function TEXT DEFAULT ''"); } catch(e) {}
+  try { await db.execute("ALTER TABLE clients ADD COLUMN is_archived INTEGER DEFAULT 0"); } catch(e) {}
+  try { await db.execute("ALTER TABLE quotes ADD COLUMN converted_to_id INTEGER DEFAULT NULL"); } catch(e) {}
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS contracts (
@@ -365,4 +367,36 @@ export async function peekQuoteNumber(): Promise<string> {
 export async function bumpQuoteCounter(): Promise<void> {
   const counter = parseInt((await getSetting("quote_counter")) || "1", 10);
   await setSetting("quote_counter", String(counter + 1));
+}
+
+/** 
+ * Generare ATOMICĂ de număr document (pentru a evita race conditions la Salvare).
+ * Această funcție trebuie apelată chiar înainte de INSERT.
+ */
+export async function getAndBumpNumber(type: "invoice" | "quote"): Promise<string> {
+  const db = await getDb();
+  const seriesKey = type === "invoice" ? "invoice_series" : "quote_series";
+  const counterKey = type === "invoice" ? "invoice_counter" : "quote_counter";
+
+  // Începem o tranzacție pentru a bloca orice altă scriere concurentă pe tabelul settings
+  await db.execute("BEGIN TRANSACTION");
+  try {
+    const series = (await getSetting(seriesKey)) || (type === "invoice" ? "FA" : "OF");
+    const [row] = await db.select<{ value: string }[]>("SELECT value FROM settings WHERE key=?", [counterKey]);
+    const current = parseInt(row?.value || "1", 10);
+    
+    const formatted = `${series}-${String(current).padStart(4, "0")}`;
+    
+    // Incrementăm contorul
+    await db.execute("UPDATE settings SET value=? WHERE key=?", [String(current + 1), counterKey]);
+    await db.execute("COMMIT");
+    
+    // Trigger update event for UI reactivity (e.g. to refresh any cached peek numbers)
+    window.dispatchEvent(new CustomEvent("settings-changed", { detail: { key: counterKey, value: String(current + 1) } }));
+    
+    return formatted;
+  } catch (e) {
+    await db.execute("ROLLBACK");
+    throw e;
+  }
 }

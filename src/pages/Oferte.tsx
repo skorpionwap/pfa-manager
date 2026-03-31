@@ -5,7 +5,7 @@ import {
   Printer, Eye, Zap, FileSignature, ListPlus, Bot
 } from "lucide-react";
 import {
-  getDb, peekQuoteNumber, bumpQuoteCounter,
+  getDb, getAndBumpNumber,
   peekInvoiceNumber
 } from "@/lib/db";
 import { useToast } from "@/components/Toast";
@@ -134,7 +134,13 @@ export default function Oferte() {
   const [settings, setSettings] = useState<Partial<Settings>>({});
   const [operatingMode, setOperatingMode] = useState<OperatingMode>("dda");
   const [showPrint, setShowPrint] = useState(false);
-  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ 
+    message: string; 
+    title?: string;
+    confirmLabel?: string;
+    type?: "danger" | "primary" | "success";
+    onConfirm: () => void; 
+  } | null>(null);
 
   // Form state
   const [clientId, setClientId] = useState<number | "">("");
@@ -352,7 +358,7 @@ export default function Oferte() {
         ]
       );
     } else {
-      const number = await peekQuoteNumber();
+      const number = await getAndBumpNumber("quote");
       await db.execute(`
         INSERT INTO quotes(
           number, client_id, title, project_type, page_count, items,
@@ -367,7 +373,6 @@ export default function Oferte() {
           deliveryDays, validUntil, status, notes, JSON.stringify(aiHistory)
         ]
       );
-      await bumpQuoteCounter();
     }
     
     setShowForm(false);
@@ -396,7 +401,10 @@ export default function Oferte() {
     
     if (s === "accepted") {
       setConfirmModal({
-        message: "Oferta a fost acceptată. Dorești să generezi contractul acum?",
+        title: "Generare Contract",
+        message: "Oferta a fost acceptată! Dorești să generezi contractul acum?",
+        confirmLabel: "Generează Contract",
+        type: "success",
         onConfirm: () => {
           setConfirmModal(null);
           const q = quotes.find(quote => quote.id === id);
@@ -974,6 +982,9 @@ ${notes ? `\n\nNOTE CURENTE SCRISE DE USER:\n${notes}` : ""}`;
       {confirmModal && (
         <ConfirmModal
           message={confirmModal.message}
+          title={confirmModal.title}
+          confirmLabel={confirmModal.confirmLabel}
+          type={confirmModal.type}
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
