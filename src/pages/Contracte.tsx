@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ConfirmModal from "@/components/ConfirmModal";
 import { Plus, X, Trash2, FileSignature,
-  Sparkles, Loader2, RefreshCw,
+  Sparkles, Loader2, RefreshCw, Check, FileText,
   Eye, Printer, Upload } from "lucide-react";
 import LexicalEditor from "@/components/LexicalEditor";
 import { getDb, getSettings, isTauri, getSetting } from "@/lib/db";
@@ -556,100 +556,208 @@ export default function Contracte() {
       {/* Form modal */}
       {showForm && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div className="modal" style={{ width: "min(1000px, 98vw)", maxHeight: "94vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 16 }}>{editing ? "Editează contract" : "Contract nou"}</h3>
-                <p style={{ fontSize: 12, color: "var(--tx-3)" }}>{editing ? `Modifici contractul ${editing.number}` : "Generare contract nou prin template sau import PDF"}</p>
-              </div>
-              <button onClick={() => setShowForm(false)} className="btn btn-ghost" style={{ padding: 6 }}><X size={16} /></button>
+          <div className="modal" style={{ width: "min(1400px, 98vw)", height: "95vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
+            {/* Modal header */}
+            <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 600, fontSize: 15, color: "var(--tx-1)" }}>
+                {editing ? "Editează contract" : "Contract nou"}
+              </h3>
+              <button onClick={() => setShowForm(false)} style={{ background: "var(--bg-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 6, color: "var(--tx-3)", display: "flex", cursor: "pointer" }}>
+                <X size={14} />
+              </button>
             </div>
 
+            {/* Body — two columns */}
             <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
-              {/* Left: Editor */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "white", overflowY: "auto" }}>
-                {form.source !== "client" && (
-                   <TemplateOptionsPanel
-                     opts={templateOpts}
-                     onRegenerate={() => applyTemplate(form.type, form.client_id, form, templateOpts)}
-                     onChange={setTemplateOpts}
-                   />
+
+              {/* LEFT COLUMN */}
+              <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)", overflow: "auto" }}>
+
+                {/* Source toggle */}
+                <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-1)" }}>
+                  <Label style={{ marginBottom: 6 }}>Origine contract</Label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {(["mine", "client"] as const).map(s => (
+                      <button key={s} type="button"
+                        onClick={() => setForm(f => ({ ...f, source: s }))}
+                        style={{ flex: 1, padding: "6px 10px", borderRadius: "var(--r-md)", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.12s",
+                          background: (form.source ?? "mine") === s ? "var(--ac)" : "var(--bg-2)",
+                          color: (form.source ?? "mine") === s ? "#fff" : "var(--tx-2)",
+                          border: `1px solid ${(form.source ?? "mine") === s ? "var(--ac)" : "var(--border)"}` }}>
+                        {s === "mine" ? "Creat de mine" : "Primit de la client"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Type toggle — only for own contracts, filtered by DDA/PFA */}
+                {(form.source ?? "mine") === "mine" && (
+                  <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-1)" }}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {(Object.entries(TYPE_LABELS) as [ContractType, string][])
+                        .filter(([t]) => mode === "dda" ? t !== "prestari" : t === "prestari")
+                        .map(([t, l]) => (
+                          <button key={t} type="button"
+                            onClick={() => {
+                              const newOpts = defaultTemplateOptions(t);
+                              setTemplateOpts(newOpts);
+                              applyTemplate(t, form.client_id, form, newOpts);
+                            }}
+                            style={{ flex: 1, padding: "7px 12px", borderRadius: "var(--r-md)", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.12s",
+                              background: form.type === t ? "var(--ac)" : "var(--bg-2)",
+                              color: form.type === t ? "#fff" : "var(--tx-2)",
+                              border: `1px solid ${form.type === t ? "var(--ac)" : "var(--border)"}` }}>
+                            {l}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
                 )}
-                <div style={{ flex: 1, padding: 24 }}>
-                   <LexicalEditor value={editorContent} onChange={setEditorContent} />
+
+                {/* Fields */}
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: (form.source ?? "mine") === "mine" ? "1fr 1fr" : "1fr", gap: 10 }}>
+                      <div>
+                        <Label>Client</Label>
+                        <select className="field" value={form.client_id ?? ""} onChange={e => {
+                          const cid = Number(e.target.value) || null;
+                          setForm(f => ({ ...f, client_id: cid }));
+                          if (quoteId) {
+                            const q = quotes.find(q => q.id === quoteId);
+                            if (q && q.client_id !== cid) setQuoteId("");
+                          }
+                        }}>
+                          <option value="">Fără client</option>
+                          {clients.filter(cl => !cl.is_archived).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      {(form.source ?? "mine") === "mine" && (
+                        <div>
+                          <Label>Importă din ofertă</Label>
+                          <select className="field" value={quoteId} onChange={async e => {
+                            const qid = Number(e.target.value) || "";
+                            if (!qid) { setQuoteId(""); return; }
+                            const q = quotes.find(q => q.id === qid);
+                            if (q) await applyQuote(q);
+                          }}>
+                            <option value="">Alege ofertă...</option>
+                            {quotes
+                              .filter(q => !form.client_id || q.client_id === form.client_id)
+                              .filter(q => !q.converted_to_id)
+                              .map(q => (
+                                <option key={q.id} value={q.id}>{q.number} — {q.title} ({q.total.toLocaleString()} RON)</option>
+                              ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div>
+                        <Label>Nr. contract</Label>
+                        <input className="field" style={{ fontFamily: "var(--font-mono)" }} value={form.number} onChange={e => setForm(f => ({ ...f, number: e.target.value }))} placeholder="C-2026-001" />
+                      </div>
+                      <div>
+                        <Label>Dată</Label>
+                        <input className="field" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div>
+                        <Label>Valoare (RON)</Label>
+                        <input className="field" type="number" style={{ fontFamily: "var(--font-mono)" }} value={form.amount || ""} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} placeholder="0" min={0} step={0.01} />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <select className="field" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as ContractStatus }))}>
+                          <option value="activ">Activ</option>
+                          <option value="pending">Spre aprobare</option>
+                          <option value="expirat">Expirat</option>
+                          <option value="reziliat">Reziliat</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Template options — only for own contracts */}
+                {(form.source ?? "mine") === "mine" && (
+                  <TemplateOptionsPanel
+                    opts={templateOpts}
+                    onChange={setTemplateOpts}
+                    onRegenerate={() => applyTemplate(form.type, form.client_id, form, templateOpts)}
+                  />
+                )}
+
+                {/* File attachment — only for client contracts */}
+                {(form.source ?? "mine") === "client" && (
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
+                    <Label>Document primit</Label>
+                    {analyzeLoading ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)", color: "var(--tx-3)", fontSize: 12 }}>
+                        <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: "var(--ac)" }} />
+                        Gemini extrage datele...
+                      </div>
+                    ) : form.file_path ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-1)", borderRadius: "var(--r-md)", border: "1px solid var(--border)" }}>
+                        <FileText size={14} color="var(--ac)" />
+                        <span style={{ flex: 1, fontSize: 12, color: "var(--tx-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {(form.file_path || "").split(/[\\/]/).pop() || form.file_path}
+                        </span>
+                        <button type="button" onClick={pickClientFile}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx-3)", display: "flex", padding: 2 }} title="Schimbă fișierul">
+                          <Upload size={11} />
+                        </button>
+                        <button type="button" onClick={() => setForm(f => ({ ...f, file_path: "" }))}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--tx-4)", display: "flex", padding: 2 }}>
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" className="btn btn-ghost" onClick={pickClientFile}
+                        style={{ width: "100%", justifyContent: "center", padding: "14px", gap: 8, border: "1px dashed var(--border)" }}>
+                        <Upload size={14} />
+                        Selectează fișier · Gemini extrage automat datele
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Notes */}
+                <div style={{ padding: "16px 20px", flexShrink: 0 }}>
+                  <Label>Note interne</Label>
+                  <textarea className="field" rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Note vizibile doar pentru tine..." style={{ resize: "none" }} />
+                </div>
+
+                {/* Footer inside left column */}
+                <div style={{ padding: "14px 20px 18px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0, marginTop: "auto" }}>
+                  <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Anulează</button>
+                  <button className="btn btn-primary" onClick={save}>
+                    <Check size={13} strokeWidth={2.5} />
+                    {editing ? "Salvează" : "Înregistrează"}
+                  </button>
                 </div>
               </div>
 
-              {/* Right: Meta */}
-              <div style={{ width: 320, borderLeft: "1px solid var(--border)", background: "var(--bg-0)", padding: 24, overflowY: "auto" }}>
-                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    <div>
-                      <Label>Client</Label>
-                      <select className="field" value={form.client_id || ""} onChange={e => {
-                        const newClientId = Number(e.target.value) || null;
-                        setForm(f => ({ ...f, client_id: newClientId }));
-                        if (quoteId) {
-                          const q = quotes.find(q => q.id === quoteId);
-                          if (q && q.client_id !== newClientId) setQuoteId("");
-                        }
-                      }}>
-                        <option value="">Alege client...</option>
-                        {clients.filter(cl => !cl.is_archived).map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
-                      </select>
-                    </div>
-                    {!editing && (
-                      <div>
-                        <Label>Ofertă asociată</Label>
-                        <select className="field" value={quoteId} onChange={async e => {
-                          const qid = Number(e.target.value) || "";
-                          if (!qid) { setQuoteId(""); return; }
-                          const q = quotes.find(q => q.id === qid);
-                          if (q) await applyQuote(q);
-                        }}>
-                          <option value="">Fără ofertă / completare manuală...</option>
-                          {quotes
-                            .filter(q => !form.client_id || q.client_id === form.client_id)
-                            .filter(q => !q.converted_to_id)
-                            .map(q => (
-                              <option key={q.id} value={q.id}>
-                                {q.number} — {q.title} ({q.total.toLocaleString()} RON)
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    )}
-                    <div>
-                      <Label>Tip contract</Label>
-                      <select className="field" value={form.type} onChange={e => {
-                        const t = e.target.value as ContractType;
-                        setForm({...form, type: t});
-                        setTemplateOpts(defaultTemplateOptions(t));
-                      }}>
-                        {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                      </select>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      <div><Label>Număr</Label><input className="field" value={form.number} onChange={e => setForm({...form, number: e.target.value})} /></div>
-                      <div><Label>Dată</Label><input className="field" type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
-                    </div>
-                    <div>
-                      <Label>Valoare Totală (RON)</Label>
-                      <input className="field" type="number" value={form.amount} onChange={e => setForm({...form, amount: Number(e.target.value)})} />
-                    </div>
-                    <div>
-                      <Label>Sursă / Fișier</Label>
-                      <button className="btn btn-ghost" style={{ width: "100%", justifyContent: "flex-start", fontSize: 12 }} onClick={pickClientFile}>
-                        <Upload size={14} style={{ marginRight: 8 }} />
-                        {form.file_path ? form.file_path.split("/").pop() : "Importă PDF client..."}
-                      </button>
-                    </div>
-                 </div>
+              {/* RIGHT COLUMN — Editor */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-0)", minWidth: 0 }}>
+                <div style={{ padding: "8px 16px 4px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, color: "var(--tx-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    {(form.source ?? "mine") === "mine" ? "Conținut contract" : "Notițe / adnotări (opțional)"}
+                  </span>
+                </div>
+                <div style={{ flex: 1, padding: "12px 16px", display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  <LexicalEditor
+                    value={editorContent}
+                    onChange={setEditorContent}
+                    placeholder={(form.source ?? "mine") === "client" ? "Adaugă notițe despre acest contract..." : "Text contract..."}
+                    className="lexical-editor-wrap"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)", textAlign: "right", display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Anulează</button>
-              <button className="btn btn-primary" onClick={save}>Salvează contract</button>
             </div>
           </div>
         </div>
