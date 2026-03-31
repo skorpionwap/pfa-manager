@@ -109,15 +109,17 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
       {/* Totals */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 60 }}>
         <div style={{ width: 280 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 13, color: "#666" }}>
-            <span>Subtotal proiect:</span>
-            <span>{quote.subtotal.toLocaleString()} RON</span>
-          </div>
           {quote.discount_percent > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 13, color: "var(--ac)" }}>
-              <span>Discount aplicat ({quote.discount_percent}%):</span>
-              <span style={{ fontWeight: 700 }}>-{quote.discount_amount.toLocaleString()} RON</span>
-            </div>
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 13, color: "#666" }}>
+                <span>Subtotal proiect:</span>
+                <span>{quote.subtotal.toLocaleString()} RON</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 13, color: "var(--ac)" }}>
+                <span>Discount aplicat ({quote.discount_percent}%):</span>
+                <span style={{ fontWeight: 700 }}>-{quote.discount_amount.toLocaleString()} RON</span>
+              </div>
+            </>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 0", borderTop: "2px solid #111", fontWeight: 800, fontSize: 18, marginTop: 4, alignItems: "center" }}>
             <span>TOTAL PROIECT</span>
@@ -178,8 +180,8 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
         </div>
       )}
 
-      {/* Year 1 Summary - only show if there's actual value */}
-      {an1 > 0 && (
+      {/* Year 1 Summary - only show if there's an active subscription */}
+      {hasSubscription && an1 > 0 && (
       <div style={{ padding: "24px 30px", border: "1px solid #eaeaea", borderRadius: 16, background: "linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", marginBottom: 60, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#111", textTransform: "uppercase", letterSpacing: "0.05em" }}>

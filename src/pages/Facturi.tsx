@@ -386,10 +386,37 @@ export default function Facturi() {
                 </div>
                 <div>
                   <FieldLabel>Contract (Opțional)</FieldLabel>
-                  <select className="field" value={contractId} onChange={e => setContractId(Number(e.target.value) || "")}>
+                  <select className="field" value={contractId} onChange={e => {
+                    const cid = Number(e.target.value) || "";
+                    setContractId(cid);
+                    if (cid && typeof cid === "number") {
+                      const contract = contracts.find(c => c.id === cid);
+                      if (contract) {
+                        if (!clientId && contract.client_id) {
+                          setClientId(contract.client_id);
+                        }
+                        if (contract.amount > 0) {
+                          // Check if items are basically empty (default state)
+                          setItems(prev => {
+                            const isDefault = prev.length === 1 && !prev[0].description && !prev[0].unit_price && !prev[0].total;
+                            if (isDefault) {
+                              toast("Date preluate din contract \u2713", "success");
+                              return [{
+                                description: `Servicii conform contract ${contract.number} din ${contract.date}`,
+                                quantity: 1,
+                                unit_price: contract.amount,
+                                total: contract.amount
+                              }];
+                            }
+                            return prev;
+                          });
+                        }
+                      }
+                    }
+                  }}>
                     <option value="">Selectează contract...</option>
                     {contracts.filter(c => !clientId || c.client_id === clientId).map(c => (
-                      <option key={c.id} value={c.id}>{c.number}</option>
+                      <option key={c.id} value={c.id}>{c.number} - {c.amount.toLocaleString()} RON</option>
                     ))}
                   </select>
                 </div>

@@ -9,7 +9,7 @@ import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { pickAndAnalyzeContract, analyzeClientContract, ContractAnalysis, ContractRisk } from "@/lib/gemini";
 import { useToast } from "@/components/Toast";
-import type { Client, Contract, OperatingMode } from "@/types";
+import type { Client, Contract, OperatingMode, Quote } from "@/types";
 import { TEMPLATE_HTML, substituteVars, generateTranseTable } from "@/lib/templates";
 
 type ContractType = Contract["type"];
@@ -104,6 +104,8 @@ export default function Contracte() {
   const [viewContract, setViewContract] = useState<Contract | null>(null);
   const [printHtml, setPrintHtml] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [quoteId, setQuoteId] = useState<number | "">("");
 
   const load = async () => {
     const db = await getDb();
@@ -115,12 +117,67 @@ export default function Contracte() {
     setContracts(rows);
     setClients(await db.select<Client[]>("SELECT * FROM clients ORDER BY name ASC"));
     
+    const rowsQuotes = await db.select<Quote[]>("SELECT * FROM quotes WHERE status = 'accepted' ORDER BY created_at DESC");
+    setQuotes(rowsQuotes.map(r => ({
+      ...r,
+      items: typeof r.items === "string" ? JSON.parse(r.items || "[]") : (r.items || []),
+      subscription_items: typeof r.subscription_items === "string" ? JSON.parse(r.subscription_items || "[]") : (r.subscription_items || [])
+    })));
+
     // Get mode to set default template
     const m = (await getSetting("operating_mode")) as OperatingMode || "dda";
     setMode(m);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    const init = async () => {
+      await load();
+      const m = (await getSetting("operating_mode")) as OperatingMode || "dda";
+      
+      const storedQuoteStr = sessionStorage.getItem("quote_to_contract");
+      if (storedQuoteStr) {
+        try {
+          const q = JSON.parse(storedQuoteStr) as Quote & { items: any[], subscription_items: any[] };
+          sessionStorage.removeItem("quote_to_contract");
+          
+          setEditing(null);
+          const f = empty();
+          f.client_id = q.client_id;
+          f.amount = q.total;
+          f.type = m === "dda" 
+            ? (q.has_subscription ? "cesiune_abonament" : "cesiune") 
+            : "prestari";
+            
+          const opts = defaultTemplateOptions(f.type);
+          if (q.has_subscription && q.subscription_price) {
+            opts.valoare_abonament = q.subscription_price.toString();
+          }
+          
+          setForm(f);
+          setTemplateOpts(opts);
+          setQuoteId(q.id);
+          
+          const vars = await loadVars(f.type, f.client_id, f, opts);
+          let html = substituteVars(TEMPLATE_HTML[f.type] ?? "", vars);
+          
+          const parsedItems = typeof q.items === "string" ? JSON.parse(q.items || "[]") : (q.items || []);
+          const parsedSubItems = typeof q.subscription_items === "string" ? JSON.parse(q.subscription_items || "[]") : (q.subscription_items || []);
+          
+          if (parsedItems.length > 0) {
+            const itemsHtml = parsedItems.filter((it: any) => it.description).map((it: any) => `<li>${it.description} — <strong>${it.total.toLocaleString()} RON</strong></li>`).join("");
+            const subItemsHtml = q.has_subscription && parsedSubItems.length > 0 ? parsedSubItems.filter((it: any) => it.description).map((it: any) => `<li>${it.description} — <strong>${it.unit_price.toLocaleString()} RON / lună</strong></li>`).join("") : "";
+            
+            html += `<br/><br/><h4>Anexa 1 - Servicii (conform Ofertei #${q.number})</h4><ul>${itemsHtml}</ul>`;
+            if (subItemsHtml) html += `<h4>Anexa 2 - Abonament / Mentenanță</h4><ul>${subItemsHtml}</ul>`;
+          }
+          
+          setEditorContent(html);
+          setShowForm(true);
+        } catch (e) { console.error(e); }
+      }
+    };
+    init();
+  }, []);
 
   // Trigger print after print-frame mounts
   useEffect(() => {
@@ -182,6 +239,7 @@ export default function Contracte() {
 
   const openNew = async () => {
     setEditing(null);
+    setQuoteId("");
     const f = empty();
     f.type = mode === "dda" ? "cesiune" : "prestari";
     const opts = defaultTemplateOptions(f.type);
@@ -196,6 +254,7 @@ export default function Contracte() {
 
   const openEdit = (c: Contract) => {
     setEditing(c);
+    setQuoteId("");
     setForm({ client_id: c.client_id, type: c.type, number: c.number, date: c.date,
               description: c.description, amount: c.amount, status: c.status, notes: c.notes,
               source: c.source ?? "mine", file_path: c.file_path ?? "" });
@@ -565,12 +624,57 @@ export default function Contracte() {
                 {/* Fields */}
                 <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div>
-                      <Label>Client</Label>
-                      <select className="field" value={form.client_id ?? ""} onChange={e => setForm(f => ({ ...f, client_id: Number(e.target.value) || null }))}>
-                        <option value="">Fără client</option>
-                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
+                    <div style={{ display: "grid", gridTemplateColumns: (form.source ?? "mine") === "mine" ? "1fr 1fr" : "1fr", gap: 10 }}>
+                      <div>
+                        <Label>Client</Label>
+                        <select className="field" value={form.client_id ?? ""} onChange={e => {
+                          const cid = Number(e.target.value) || null;
+                          setForm(f => ({ ...f, client_id: cid }));
+                          if (!cid) setQuoteId("");
+                        }}>
+                          <option value="">Fără client</option>
+                          {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      {(form.source ?? "mine") === "mine" && (
+                        <div>
+                          <Label>Importă din ofertă (opțional)</Label>
+                          <select className="field" value={quoteId} onChange={async e => {
+                            const qId = Number(e.target.value) || "";
+                            setQuoteId(qId);
+                            if (qId && typeof qId === "number") {
+                              const q = quotes.find(x => x.id === qId);
+                              if (q) {
+                                const f = { ...form, client_id: q.client_id, amount: q.total };
+                                f.type = mode === "dda" ? (q.has_subscription ? "cesiune_abonament" : "cesiune") : "prestari";
+                                const opts = defaultTemplateOptions(f.type);
+                                if (q.has_subscription && q.subscription_price) opts.valoare_abonament = q.subscription_price.toString();
+                                setForm(f);
+                                setTemplateOpts(opts);
+                                const vars = await loadVars(f.type, f.client_id, f, opts);
+                                let html = substituteVars(TEMPLATE_HTML[f.type] ?? "", vars);
+                                
+                                const pItems = typeof q.items === "string" ? JSON.parse(q.items || "[]") : (q.items || []);
+                                const pSub = typeof q.subscription_items === "string" ? JSON.parse(q.subscription_items || "[]") : (q.subscription_items || []);
+                                
+                                if (pItems.length > 0) {
+                                  const itemsHtml = pItems.filter((it: any) => it.description).map((it: any) => `<li>${it.description} — <strong>${it.total.toLocaleString()} RON</strong></li>`).join("");
+                                  const subItemsHtml = q.has_subscription && pSub.length > 0 ? pSub.filter((it: any) => it.description).map((it: any) => `<li>${it.description} — <strong>${it.unit_price.toLocaleString()} RON / lună</strong></li>`).join("") : "";
+                                  html += `<br/><br/><h4>Anexa 1 - Servicii (conform Ofertei #${q.number})</h4><ul>${itemsHtml}</ul>`;
+                                  if (subItemsHtml) html += `<h4>Anexa 2 - Abonament / Mentenanță</h4><ul>${subItemsHtml}</ul>`;
+                                }
+                                setEditorContent(html);
+                                toast("Date ofertă importate \u2713", "success");
+                              }
+                            }
+                          }}>
+                            <option value="">Alege ofertă...</option>
+                            {quotes.filter(q => !form.client_id || q.client_id === form.client_id).map(q => (
+                              <option key={q.id} value={q.id}>{q.number} - {q.total.toLocaleString()} RON</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       <div>
