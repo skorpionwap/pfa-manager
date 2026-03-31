@@ -6,21 +6,13 @@ interface QuoteTipizatProps {
   settings: Settings;
 }
 
-const DEFAULT_TERMS = [
-  { title: "Facturare și Plată", text: "Se va emite o factură de avans (ex: 30-50%) la semnarea contractului, restul urmând a fi facturat conform tranșelor agreate la predarea proiectului." },
-  { title: "Termen de valabilitate", text: "Condițiile financiare din prezenta ofertă sunt valabile până la data de {valid_until}." },
-  { title: "Drepturi de autor", text: "Drepturile patrimoniale de autor asupra codului și design-ului se vor transfera exclusiv Beneficiarului după achitarea integrală a proiectului, conform Legii 8/1996." },
-  { title: "Acceptanță", text: "Semnarea acestei oferte ține loc de acceptare de principiu și declanșează redactarea contractului final." },
-];
-
 function parseTerms(raw: string, validUntil: string): { title: string; text: string }[] {
   const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
-  const parsed = lines.map(line => {
+  return lines.map(line => {
     const m = line.match(/^\[(.+?)\]\s*(.+)/);
     if (!m) return null;
     return { title: m[1], text: m[2].replace(/\{valid_until\}/g, validUntil || "scadență") };
   }).filter((x): x is { title: string; text: string } => x !== null);
-  return parsed.length > 0 ? parsed : DEFAULT_TERMS.map(t => ({ ...t, text: t.text.replace(/\{valid_until\}/g, validUntil || "scadență") }));
 }
 
 export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatProps) {
@@ -28,9 +20,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
   const validSubItems = (quote.subscription_items || []).filter(it => it.description && it.total > 0);
   const hasSubscription = !!quote.has_subscription && validSubItems.length > 0;
   const an1 = quote.total + (hasSubscription ? quote.subscription_price * 12 : 0);
-  const terms = quote.terms
-    ? parseTerms(quote.terms, quote.valid_until || "")
-    : DEFAULT_TERMS.map(t => ({ ...t, text: t.text.replace(/\{valid_until\}/g, quote.valid_until || "scadență") }));
+  const terms = quote.terms ? parseTerms(quote.terms, quote.valid_until || "") : [];
 
   return (
     <div style={{ color: "#111", fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.5, WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}>
@@ -215,8 +205,8 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
       </div>
       )}
 
-      {/* Commercial Terms */}
-      <div style={{ marginBottom: 40, pageBreakInside: "avoid" }}>
+      {/* Commercial Terms — only if explicitly set */}
+      {terms.length > 0 && <div style={{ marginBottom: 40, pageBreakInside: "avoid" }}>
         <h4 style={{ fontSize: 10, fontWeight: 800, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12, borderBottom: "1px solid #eee", paddingBottom: 6 }}>
           Termeni Comerciali și de Achiziție
         </h4>
@@ -232,7 +222,7 @@ export default function QuoteTipizat({ quote, client, settings }: QuoteTipizatPr
             ))}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Notes */}
       {quote.notes && (
